@@ -1357,7 +1357,7 @@ class TrackternJobSaver {
       document.body.innerHTML = `
         <div class="job-list-screen">
                                       <div class="header">
-            <h3>💼 Job Tracker</h3>
+            <h3>💼 Tracktern</h3>
             <div class="storage-info">
               <div class="job-count">${jobCount} job${jobCount !== 1 ? 's' : ''} saved</div>
               <div class="storage-type">${this.config?.storageType === 'local' ? '💾 Local' : '☁️ Airtable'}</div>
