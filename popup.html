@@ -24,11 +24,28 @@
   </head>
   <body>
     <h2>Save Job</h2>
-    <input type="text" id="title" placeholder="Job Title">
-    <input type="text" id="company" placeholder="Company">
-    <textarea id="description" placeholder="Job Description"></textarea>
-    <input type="text" id="url" placeholder="Job URL">
-    <button id="save">Save to Airtable</button>
+    
+    <!-- Configuration Section -->
+    <div id="config-section" style="display: none;">
+      <h3>Airtable Configuration</h3>
+      <input type="password" id="pat-token" placeholder="Personal Access Token">
+      <input type="text" id="base-id" placeholder="Base ID (appXXXXXXXXXX)">
+      <input type="text" id="table-name" placeholder="Table Name">
+      <button id="save-config">Save Configuration</button>
+      <hr>
+    </div>
+    
+    <!-- Job Form Section -->
+    <div id="job-section">
+      <input type="text" id="title" placeholder="Job Title">
+      <input type="text" id="company" placeholder="Company">
+      <textarea id="description" placeholder="Job Description"></textarea>
+      <input type="text" id="url" placeholder="Job URL">
+      <button id="save">Save to Airtable</button>
+      <button id="settings" style="background-color: #666; margin-top: 5px;">⚙️ Settings</button>
+    </div>
+    
+    <div id="status" style="margin-top: 10px; font-size: 12px;"></div>
     <script src="popup.js"></script>
   </body>
 </html>
