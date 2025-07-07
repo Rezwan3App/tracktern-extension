@@ -1,151 +1,228 @@
-# Tracktern Job Saver - Chrome Extension with Airtable Integration
+# Tracktern Job Saver Extension
 
-A Chrome extension that automatically extracts job listing information from websites and saves it directly to Airtable.
+A Chrome extension that automatically extracts job information from job posting websites and saves it to your preferred storage method.
 
-## Features
+## 🚀 Features
 
-- **Auto-extraction**: Automatically scrapes job title, company, description, and URL from job listing pages
-- **Multiple site support**: Works with LinkedIn, Indeed, Workable.com, and many other job sites
-- **Airtable integration**: Saves data directly to your Airtable base using Personal Access Tokens
-- **Smart selectors**: Uses multiple fallback CSS selectors for reliable data extraction
-- **Secure storage**: Configuration stored securely in Chrome's sync storage
+- **Smart Job Extraction**: Automatically detects job titles, companies, and descriptions from job sites
+- **Multiple Storage Options**: Choose between Local Storage (simple) or Airtable (advanced)
+- **Beautiful Dashboard**: View all your saved jobs in a clean, organized interface
+- **Export Functionality**: Download your job data as CSV
+- **Works Everywhere**: LinkedIn, Indeed, and other major job sites
 
-## Setup Instructions
+---
 
-### 1. Create Airtable Base
+## 📦 Quick Setup
 
-1. Go to [Airtable](https://airtable.com) and create a new base
-2. Create a table with these columns (exact names matter):
-   - `Job Title` (Single line text)
-   - `Company` (Single line text) 
-   - `Description` (Long text)
-   - `URL` (URL)
-   - `Date Added` (Date)
+### Option 1: Local Storage (Recommended for Most Users)
+✅ **Zero setup required** - works immediately  
+✅ **No external accounts needed**  
+✅ **Export to CSV anytime**  
+⚠️ **Data stays on this device only**
 
-### 2. Get Airtable Credentials
+1. Install the extension
+2. Click "💾 Local Storage" when prompted
+3. Start saving jobs immediately!
 
-#### Personal Access Token (PAT):
-1. Visit [https://airtable.com/create/tokens](https://airtable.com/create/tokens)
-2. Click "Create new token"
-3. Give it a name like "Job Saver Extension"
-4. Set scopes:
-   - `data.records:read`
-   - `data.records:write`
-   - `schema.bases:read`
-5. Select your specific base under "Access"
-6. Click "Create token" and copy it
+### Option 2: Airtable Sync (Advanced Users)
+✅ **Access from anywhere**  
+✅ **Advanced filtering & views**  
+✅ **Team collaboration**  
+⚠️ **Requires Airtable account setup**
 
-#### Base ID:
-1. Go to [https://airtable.com/api](https://airtable.com/api)
-2. Select your base
-3. Copy the Base ID (starts with `app...`)
+1. Install the extension
+2. Click "☁️ Airtable Sync" when prompted
+3. Follow the guided setup process
 
-### 3. Install Extension
+---
 
-1. Clone this repository or download the files
-2. Open Chrome and go to `chrome://extensions/`
-3. Enable "Developer mode" (top right)
-4. Click "Load unpacked" and select the extension folder
+## 🔧 Installation
 
-### 4. Configure Extension
+1. **Download the extension**
+   ```bash
+   git clone https://github.com/Rezwan3App/tracktern-extension
+   ```
 
-1. Click the extension icon in your browser
-2. Click "⚙️ Settings" button
-3. Fill in:
-   - **Personal Access Token**: Your PAT from step 2
-   - **Base ID**: Your base ID (e.g., `appXXXXXXXXXX`)
-   - **Table Name**: Name of your table (e.g., `Jobs`)
-4. Click "Save Configuration"
+2. **Load in Chrome**
+   - Open Chrome and go to `chrome://extensions/`
+   - Enable "Developer mode" (top right)
+   - Click "Load unpacked"
+   - Select the extension folder
 
-## Usage
+3. **Start Using**
+   - Navigate to any job posting
+   - Click the extension icon
+   - Choose your storage method
+   - Save jobs with one click!
 
-1. **Visit any job listing page** (LinkedIn, Indeed, company careers pages, etc.)
-2. **Click the extension icon** - it will auto-populate with scraped data
-3. **Review and edit** the extracted information if needed
-4. **Click "Save to Airtable"** to store the job
+---
 
-## Supported Job Sites
+## 💾 Storage Options Comparison
 
-The extension works on most job listing websites including:
-- LinkedIn Jobs
-- Indeed
-- Company career pages
-- Workable.com hosted jobs
-- AngelList/Wellfound
-- RemoteOK
-- And many others!
+| Feature | Local Storage | Airtable |
+|---------|---------------|-----------|
+| **Setup Time** | 0 seconds | ~2 minutes |
+| **Account Required** | ❌ None | ✅ Airtable account |
+| **Works Offline** | ✅ Yes | ❌ No |
+| **Cross-Device Sync** | ❌ No | ✅ Yes |
+| **Export Data** | ✅ CSV | ✅ CSV + Database |
+| **Advanced Filtering** | ❌ Basic | ✅ Full database |
+| **Team Sharing** | ❌ No | ✅ Yes |
+| **Data Backup** | ⚠️ Manual | ✅ Automatic |
 
-## Troubleshooting
+---
 
-### Configuration Issues
-- **"Configuration test failed"**: Check your PAT has correct permissions and base ID is valid
-- **"Base ID should start with app"**: Ensure you copied the full Base ID from Airtable API docs
+## 🎯 How It Works
 
-### Saving Issues  
-- **"Error saving job"**: Verify your table has the exact column names listed above
-- **Missing data**: Some sites may require manual editing of scraped content
+### 1. **Smart Detection**
+The extension automatically detects:
+- Job titles from page headings
+- Company names from various page elements  
+- Job descriptions from "About" sections and content blocks
+- Filters out metadata like posting dates and applicant counts
 
-### Permission Issues
-- **"Invalid permissions"**: Your PAT needs `data.records:write` scope
-- **"Table not found"**: Check table name matches exactly (case-sensitive)
+### 2. **Flexible Storage**
+Choose your preferred method:
+- **Local Storage**: Instant setup, browser-based storage
+- **Airtable**: Cloud sync with advanced database features
 
-## Field Mapping
+### 3. **Beautiful Interface**
+- Clean job cards with status indicators
+- Quick actions (add job, export, settings)
+- Search and filter capabilities
+- One-click job saving
 
-The extension maps scraped data to these Airtable fields:
+---
 
-| Extension Field | Airtable Field | Type |
-|----------------|----------------|------|
-| Job Title | `Job Title` | Single line text |
-| Company | `Company` | Single line text |
-| Description | `Description` | Long text |
-| URL | `URL` | URL |
-| Current Date | `Date Added` | Date |
+## 🌐 Supported Job Sites
 
-## Security
+- **LinkedIn** (optimized selectors)
+- **Indeed** 
+- **Glassdoor**
+- **AngelList** 
+- **Monster**
+- **ZipRecruiter**
+- And many more! (Generic job site detection)
 
-- Personal Access Tokens are stored securely in Chrome's sync storage
-- Tokens are encrypted and synced across your Chrome instances
-- No data is sent to third parties except Airtable
+---
 
-## API Rate Limits
+## ⚙️ Configuration
 
-- Airtable allows 5 requests per second per base
-- Extension includes error handling for rate limits
-- For heavy usage, consider upgrading your Airtable plan
+### Local Storage
+- No configuration needed
+- Data stored in browser's local storage
+- Switch to Airtable anytime from Settings
 
-## Development
+### Airtable Setup
+1. **Create Base**: Use our guided setup or existing base
+2. **Generate Token**: Personal Access Token with required permissions
+3. **Connect**: Paste token and start syncing
 
-### File Structure
+**Required Airtable Permissions:**
+- `data.records:read`
+- `data.records:write`  
+- `schema.bases:read`
+
+---
+
+## 📊 Job Data Structure
+
+Each saved job includes:
+- **Job Title**: Position name
+- **Company**: Company name
+- **Description**: Full job description (cleaned of metadata)
+- **URL**: Original job posting link
+- **Status**: Application status (To Apply, Applied, Interview, Rejected)
+- **Date Added**: When job was saved
+
+---
+
+## 🔄 Migration & Export
+
+### Export Your Data
+- **Local Storage**: Click "📊 Export CSV" in job list
+- **Airtable**: Export via Airtable interface or extension CSV
+
+### Switch Storage Methods
+- Go to Settings → Switch storage type
+- Data migration assistance available
+- No data loss during switching
+
+---
+
+## 🛠️ Development
+
+### Project Structure
 ```
-├── manifest.json       # Extension configuration
-├── popup.html         # Extension popup UI  
-├── popup.js          # Main extension logic & Airtable API
-├── content.js        # Alternative content scraping
-└── README.md         # This file
+tracktern-extension/
+├── manifest.json          # Extension configuration
+├── popup.html             # Extension popup interface  
+├── popup.js               # Main application logic
+├── content.js             # Content script for job extraction
+├── AIRTABLE_SETUP.md      # Detailed Airtable setup guide
+└── README.md              # This file
 ```
 
-### Key Components
-- **AirtableJobSaver class**: Handles all API interactions and UI management
-- **Configuration management**: Secure storage and validation of credentials
-- **Smart scraping**: Multiple selector strategies for different job sites
-- **Error handling**: Comprehensive error messages and status updates
+### Key Features
+- **Multi-storage architecture**: Supports both local and cloud storage
+- **Smart job extraction**: Advanced selectors and fallback methods
+- **Error handling**: Comprehensive error management and user feedback
+- **Responsive UI**: Clean, modern interface optimized for extension popup
 
-## Contributing
-
+### Contributing
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Test thoroughly on various job sites
+4. Test thoroughly
 5. Submit a pull request
 
-## License
+---
 
-MIT License - feel free to use and modify for your needs.
+## 🆘 Troubleshooting
 
-## Support
+### Common Issues
 
-If you encounter issues:
-1. Check the troubleshooting section above
-2. Verify your Airtable setup matches the requirements
-3. Test the configuration in the extension settings
-4. Check browser console for detailed error messages
+**"No job data detected"**
+- Try the "↻ Re-scan page" button
+- Some job sites may need manual entry
+- Check browser console (F12) for detailed logs
+
+**Local storage not working**
+- Check if browser storage is enabled
+- Clear extension data and restart
+- Ensure sufficient storage space
+
+**Airtable connection issues**
+- Verify Personal Access Token format (starts with "pat")
+- Check all required permissions are enabled
+- Ensure base access is granted to token
+
+### Getting Help
+- Check `AIRTABLE_SETUP.md` for detailed setup instructions
+- Use browser console (F12) for debugging information
+- Open GitHub issue for bug reports
+
+---
+
+## 📈 Roadmap
+
+- [ ] **Browser sync**: Sync local storage across Chrome instances
+- [ ] **Job search integration**: Search jobs directly in extension
+- [ ] **Application tracking**: Enhanced status workflow
+- [ ] **Notifications**: Reminders for follow-ups
+- [ ] **Analytics**: Job search insights and statistics
+- [ ] **Templates**: Cover letter and resume templates
+
+---
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+Built with ❤️ for job seekers everywhere. 
+
+**Made simple, kept powerful.** 🚀
