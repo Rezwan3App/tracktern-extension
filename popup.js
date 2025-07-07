@@ -1383,7 +1383,10 @@ class TrackternJobSaver {
               <div class="job-item" data-job-id="${job.id}">
                 <div class="job-header">
                   <div class="job-title">${job.fields['Job Title'] || 'Untitled'}</div>
-                  <div class="job-status status-${(job.fields['Status'] || '').toLowerCase().replace(/\s/g, '-')}">${job.fields['Status'] || 'Unknown'}</div>
+                  <select class="status-select" data-job-id="${job.id}">
+                    ${['To Apply','Applied','Interview','Rejected','Offer'].map(s=>`<option value="${s}" ${s=== (job.fields['Status']||'To Apply') ? 'selected':''}>${s}</option>`).join('')}
+                  </select>
+                  <button class="delete-job" data-job-id="${job.id}">🗑️</button>
                 </div>
                 <div class="job-company">${job.fields['Company'] || 'Unknown Company'}</div>
                 <div class="job-date">${job.fields['Date Added'] ? new Date(job.fields['Date Added']).toLocaleDateString() : 'No date'}</div>
@@ -1406,6 +1409,8 @@ class TrackternJobSaver {
       document.getElementById('refresh-list')?.addEventListener('click', () => this.showJobList());
       document.getElementById('export-csv')?.addEventListener('click', () => this.exportToCSV(jobs));
       document.getElementById('settings')?.addEventListener('click', () => this.showSettings());
+      document.querySelectorAll('.delete-job').forEach(btn=>btn.addEventListener('click',e=>{const id=e.currentTarget.getAttribute('data-job-id');this.deleteJob(id);}));
+      document.querySelectorAll('.status-select').forEach(sel=>sel.addEventListener('change',e=>{const id=e.currentTarget.getAttribute('data-job-id');const val=e.currentTarget.value;this.updateJobStatus(id,val);}));
       
       // Clear status after showing list
       this.showStatus('', 'info');
@@ -1614,6 +1619,40 @@ class TrackternJobSaver {
 
   showError(message) {
     this.showStatus(message, 'error');
+  }
+
+  async deleteJob(jobId) {
+    if(!confirm('Delete this job?')) return;
+    if(this.config?.storageType==='local') {
+       const result=await chrome.storage.local.get(['savedJobs']);
+       const jobs=(result.savedJobs||[]).filter(j=>j.id!==jobId);
+       await chrome.storage.local.set({savedJobs:jobs});
+       this.showStatus('Deleted!', 'success');
+       this.showJobList();
+    }else {
+       // Airtable delete
+       try {
+         const url=`https://api.airtable.com/v0/${this.config.baseId}/${encodeURIComponent(this.config.tableName)}/${jobId}`;
+         const resp=await fetch(url,{method:'DELETE',headers:{'Authorization':`Bearer ${this.config.patToken}`}});
+         if(!resp.ok) throw new Error('API error');
+         this.showStatus('Deleted!', 'success');
+         this.showJobList();
+       }catch(err){this.showStatus('Delete failed','error');}
+    }
+  }
+
+  async updateJobStatus(jobId, status) {
+    if(this.config?.storageType==='local') {
+       const result=await chrome.storage.local.get(['savedJobs']);
+       const jobs=result.savedJobs||[];
+       const job=jobs.find(j=>j.id===jobId);
+       if(job){job.fields['Status']=status;await chrome.storage.local.set({savedJobs:jobs});}
+    }else {
+       const url=`https://api.airtable.com/v0/${this.config.baseId}/${encodeURIComponent(this.config.tableName)}/${jobId}`;
+       await fetch(url,{method:'PATCH',headers:{'Authorization':`Bearer ${this.config.patToken}`,'Content-Type':'application/json'},body:JSON.stringify({fields:{'Status':status}})});
+    }
+    // update UI badge quickly
+    this.showJobList();
   }
 }
 
