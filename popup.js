@@ -16,9 +16,14 @@ class TrackternJobSaver {
       console.log('TrackternJobSaver: Setting up event listeners...');
       this.setupEventListeners();
       
-      console.log('TrackternJobSaver: Loading job form...');
-      // Always start by scraping and showing job form
-      await this.loadJobAndShowForm();
+      // If configured, show job list. If not, load job and show form
+      if (this.config?.patToken) {
+        console.log('TrackternJobSaver: Configuration found, showing job list...');
+        await this.showJobList();
+      } else {
+        console.log('TrackternJobSaver: No configuration, loading job form...');
+        await this.loadJobAndShowForm();
+      }
       
       this.isInitialized = true;
       console.log('TrackternJobSaver: Initialization complete!');
@@ -417,12 +422,152 @@ class TrackternJobSaver {
   async handleSaveToAirtable() {
     // Check if we have Airtable config
     if (!this.config?.patToken) {
-      this.startAirtableSetup();
+      this.showSmartSetup();
       return;
     }
 
     // We have config, save directly
     await this.saveJob();
+  }
+
+  showSmartSetup() {
+    this.showStatus('Checking Airtable connection...', 'info');
+    
+    document.body.innerHTML = `
+      <div class="setup-screen">
+        <h3>🚀 Quick Airtable Setup</h3>
+        <p class="setup-intro">Let's get you connected to Airtable in one click!</p>
+        
+        <div class="setup-options">
+          <button id="auto-setup" class="primary-btn">
+            ✨ Auto-Setup (Recommended)
+          </button>
+          <p class="help-text">We'll create a "Job Tracker" base for you automatically</p>
+          
+          <div class="divider">or</div>
+          
+          <button id="manual-setup" class="secondary-btn">
+            🔧 Manual Setup
+          </button>
+          <p class="help-text">Use existing base with Personal Access Token</p>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="footer">
+          <button id="back-to-job" class="secondary-btn">← Back to job form</button>
+        </div>
+      </div>
+    `;
+    
+    // Set up event listeners
+    document.getElementById('auto-setup')?.addEventListener('click', () => this.startAutoSetup());
+    document.getElementById('manual-setup')?.addEventListener('click', () => this.startManualSetup());
+    document.getElementById('back-to-job')?.addEventListener('click', () => this.loadJobAndShowForm());
+  }
+
+  async startAutoSetup() {
+    this.showStatus('Opening Airtable for auto-setup...', 'info');
+    
+    // Open Airtable with auto-setup URL
+    chrome.tabs.create({
+      url: 'https://airtable.com/templates/expFo1yNQPYwhey5n/job-applications-tracker',
+      active: true
+    });
+
+    this.showAutoSetupInstructions();
+  }
+
+  showAutoSetupInstructions() {
+    document.body.innerHTML = `
+      <div class="setup-screen">
+        <h3>🎯 Auto-Setup Instructions</h3>
+        
+        <div class="steps">
+          <div class="step">
+            <span class="step-number">1</span>
+            <div class="step-content">
+              <strong>Use Template</strong>
+              <p>Click "Use template" on the Job Tracker that just opened</p>
+            </div>
+          </div>
+          
+          <div class="step">
+            <span class="step-number">2</span>
+            <div class="step-content">
+              <strong>Create Token</strong>
+              <p>Go to <a href="https://airtable.com/create/tokens" target="_blank">airtable.com/create/tokens</a></p>
+              <p>Create token with: data.records:read, data.records:write, schema.bases:read</p>
+            </div>
+          </div>
+          
+          <div class="step">
+            <span class="step-number">3</span>
+            <div class="step-content">
+              <strong>Paste Token</strong>
+              <div class="token-input">
+                <input type="password" id="pat-input" placeholder="Paste your token here" />
+                <button id="connect-auto" class="primary-btn">Connect</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="footer">
+          <button id="back-to-options" class="secondary-btn">← Back to options</button>
+        </div>
+      </div>
+    `;
+    
+    document.getElementById('connect-auto')?.addEventListener('click', () => this.connectAutoSetup());
+    document.getElementById('back-to-options')?.addEventListener('click', () => this.showSmartSetup());
+  }
+
+  async connectAutoSetup() {
+    const token = document.getElementById('pat-input')?.value.trim();
+    
+    if (!token) {
+      this.showStatus('Please paste your Personal Access Token', 'error');
+      return;
+    }
+
+    this.showStatus('Connecting and setting up your job tracker...', 'info');
+
+    try {
+      // Get all bases and find the job tracker template
+      const bases = await this.getAirtableBases(token);
+      
+      // Look for recently created job/application base (likely the template)
+      const jobBase = bases.find(base => 
+        base.name.toLowerCase().includes('job') || 
+        base.name.toLowerCase().includes('application') ||
+        base.name.toLowerCase().includes('tracker')
+      ) || bases[0]; // Fallback to first base
+
+      if (!jobBase) {
+        throw new Error('No bases found. Please create the Job Tracker template first.');
+      }
+
+      await this.saveConfiguration(token, jobBase.id);
+      
+      this.showStatus('✅ Setup complete! Saving your job...', 'success');
+      
+      // Auto-save the current job and show success
+      setTimeout(async () => {
+        await this.saveJob();
+        this.showJobList();
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Auto-setup error:', error);
+      this.showStatus(`❌ Setup failed: ${error.message}`, 'error');
+    }
+  }
+
+  startManualSetup() {
+    this.showSetupInstructions();
   }
 
   startAirtableSetup() {
@@ -632,14 +777,182 @@ class TrackternJobSaver {
       await this.createRecord(jobData);
       this.showStatus('✅ Job saved successfully!', 'success');
       
-      // Auto-close after success
+      // After saving, show job list
       setTimeout(() => {
-        window.close();
+        this.showJobList();
       }, 1500);
       
     } catch (error) {
       console.error('Save error:', error);
       this.showStatus(`❌ Save failed: ${error.message}`, 'error');
+    }
+  }
+
+  async showJobList() {
+    this.showStatus('Loading your saved jobs...', 'info');
+    
+    try {
+      const jobs = await this.getJobList();
+      const jobCount = jobs.length;
+      
+      document.body.innerHTML = `
+        <div class="job-list-screen">
+          <div class="header">
+            <h3>💼 Job Tracker</h3>
+            <div class="job-count">${jobCount} job${jobCount !== 1 ? 's' : ''} saved</div>
+          </div>
+          
+          <div class="actions">
+            <button id="add-current-job" class="primary-btn">
+              ➕ Add Current Job
+            </button>
+            <button id="refresh-list" class="secondary-btn">
+              ↻ Refresh
+            </button>
+          </div>
+          
+          <div class="job-list">
+            ${jobs.length === 0 ? `
+              <div class="empty-state">
+                <p>🎯 No jobs saved yet!</p>
+                <p>Click "Add Current Job" to start tracking your applications.</p>
+              </div>
+            ` : jobs.map(job => `
+              <div class="job-item" data-job-id="${job.id}">
+                <div class="job-header">
+                  <div class="job-title">${job.fields['Job Title'] || 'Untitled'}</div>
+                  <div class="job-status status-${(job.fields['Status'] || '').toLowerCase().replace(/\s/g, '-')}">${job.fields['Status'] || 'Unknown'}</div>
+                </div>
+                <div class="job-company">${job.fields['Company'] || 'Unknown Company'}</div>
+                <div class="job-date">${job.fields['Date Added'] ? new Date(job.fields['Date Added']).toLocaleDateString() : 'No date'}</div>
+                ${job.fields['URL'] ? `<a href="${job.fields['URL']}" target="_blank" class="job-link">🔗 View Job</a>` : ''}
+              </div>
+            `).join('')}
+          </div>
+          
+          <div id="status" class="status"></div>
+          
+          <div class="footer">
+            <button id="export-csv" class="secondary-btn">📊 Export CSV</button>
+            <button id="settings" class="secondary-btn">⚙️ Settings</button>
+          </div>
+        </div>
+      `;
+      
+      // Set up event listeners
+      document.getElementById('add-current-job')?.addEventListener('click', () => this.loadJobAndShowForm());
+      document.getElementById('refresh-list')?.addEventListener('click', () => this.showJobList());
+      document.getElementById('export-csv')?.addEventListener('click', () => this.exportToCSV(jobs));
+      document.getElementById('settings')?.addEventListener('click', () => this.showSettings());
+      
+      // Clear status after showing list
+      this.showStatus('', 'info');
+      
+    } catch (error) {
+      console.error('Error loading job list:', error);
+      this.showStatus(`❌ Failed to load jobs: ${error.message}`, 'error');
+    }
+  }
+
+  async getJobList() {
+    if (!this.config?.patToken || !this.config?.baseId) {
+      throw new Error('Airtable configuration not found');
+    }
+
+    const response = await fetch(
+      `https://api.airtable.com/v0/${this.config.baseId}/${encodeURIComponent(this.config.tableName)}?sort%5B0%5D%5Bfield%5D=Date%20Added&sort%5B0%5D%5Bdirection%5D=desc`,
+      {
+        headers: {
+          'Authorization': `Bearer ${this.config.patToken}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error?.message || 'Failed to fetch jobs');
+    }
+
+    const data = await response.json();
+    return data.records || [];
+  }
+
+  async exportToCSV(jobs) {
+    const headers = ['Job Title', 'Company', 'Status', 'Date Added', 'URL'];
+    const rows = jobs.map(job => [
+      job.fields['Job Title'] || '',
+      job.fields['Company'] || '',
+      job.fields['Status'] || '',
+      job.fields['Date Added'] || '',
+      job.fields['URL'] || ''
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(field => `"${(field || '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `job-tracker-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    
+    URL.revokeObjectURL(url);
+    this.showStatus('✅ CSV exported successfully!', 'success');
+  }
+
+  showSettings() {
+    document.body.innerHTML = `
+      <div class="settings-screen">
+        <div class="header">
+          <h3>⚙️ Settings</h3>
+        </div>
+        
+        <div class="settings-list">
+          <div class="setting-item">
+            <div class="setting-label">Airtable Base ID</div>
+            <div class="setting-value">${this.config?.baseId || 'Not configured'}</div>
+          </div>
+          
+          <div class="setting-item">
+            <div class="setting-label">Connection Status</div>
+            <div class="setting-value">${this.config?.patToken ? '✅ Connected' : '❌ Not connected'}</div>
+          </div>
+        </div>
+        
+        <div class="settings-actions">
+          <button id="reconnect" class="primary-btn">
+            🔄 Reconnect Airtable
+          </button>
+          <button id="clear-config" class="danger-btn">
+            🗑️ Clear Configuration
+          </button>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="footer">
+          <button id="back-to-list" class="secondary-btn">← Back to Job List</button>
+        </div>
+      </div>
+    `;
+    
+    document.getElementById('reconnect')?.addEventListener('click', () => this.showSmartSetup());
+    document.getElementById('clear-config')?.addEventListener('click', () => this.clearConfiguration());
+    document.getElementById('back-to-list')?.addEventListener('click', () => this.showJobList());
+  }
+
+  async clearConfiguration() {
+    if (confirm('Are you sure you want to clear your Airtable configuration? You will need to reconnect.')) {
+      await chrome.storage.sync.clear();
+      this.config = null;
+      this.showStatus('✅ Configuration cleared', 'success');
+      setTimeout(() => {
+        this.loadJobAndShowForm();
+      }, 1000);
     }
   }
 
@@ -691,7 +1004,7 @@ const styles = `
     background: #f8f9fa;
   }
   
-  .job-form, .setup-screen {
+  .job-form, .setup-screen, .job-list-screen, .settings-screen {
     padding: 20px;
   }
   
@@ -889,6 +1202,199 @@ const styles = `
   .status.error {
     background: #fed7d7;
     color: #c53030;
+  }
+  
+  /* Job List Styles */
+  .job-count {
+    font-size: 11px;
+    color: #718096;
+    background: #edf2f7;
+    padding: 3px 6px;
+    border-radius: 3px;
+  }
+  
+  .actions {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 15px;
+  }
+  
+  .actions .primary-btn {
+    flex: 1;
+    margin-bottom: 0;
+  }
+  
+  .actions .secondary-btn {
+    flex: 0 0 auto;
+  }
+  
+  .job-list {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .job-item {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    transition: box-shadow 0.2s;
+  }
+  
+  .job-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .job-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 6px;
+  }
+  
+  .job-title {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 14px;
+    line-height: 1.3;
+    flex: 1;
+    margin-right: 8px;
+  }
+  
+  .job-status {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  
+  .status-to-apply {
+    background: #bee3f8;
+    color: #2a69ac;
+  }
+  
+  .status-applied {
+    background: #c6f6d5;
+    color: #25855a;
+  }
+  
+  .status-interview {
+    background: #fef5e7;
+    color: #c05621;
+  }
+  
+  .status-rejected {
+    background: #fed7d7;
+    color: #c53030;
+  }
+  
+  .job-company {
+    color: #4a5568;
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+  
+  .job-date {
+    color: #718096;
+    font-size: 11px;
+    margin-bottom: 6px;
+  }
+  
+  .job-link {
+    color: #3182ce;
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  
+  .job-link:hover {
+    text-decoration: underline;
+  }
+  
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #718096;
+  }
+  
+  .empty-state p {
+    margin: 8px 0;
+    font-size: 14px;
+  }
+  
+  /* Settings Styles */
+  .settings-list {
+    margin: 20px 0;
+  }
+  
+  .setting-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  
+  .setting-item:last-child {
+    border-bottom: none;
+  }
+  
+  .setting-label {
+    font-size: 14px;
+    color: #4a5568;
+    font-weight: 500;
+  }
+  
+  .setting-value {
+    font-size: 13px;
+    color: #718096;
+    max-width: 150px;
+    text-align: right;
+    word-break: break-all;
+  }
+  
+  .settings-actions {
+    margin: 20px 0;
+  }
+  
+  .settings-actions button {
+    margin-bottom: 8px;
+  }
+  
+  .danger-btn {
+    background: #e53e3e;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    font-size: 14px;
+  }
+  
+  .danger-btn:hover {
+    background: #c53030;
+  }
+  
+  /* Setup Options Styles */
+  .setup-options {
+    margin: 20px 0;
+  }
+  
+  .help-text {
+    font-size: 12px;
+    color: #718096;
+    margin: 4px 0 15px 0;
+  }
+  
+  .divider {
+    text-align: center;
+    color: #a0aec0;
+    margin: 15px 0;
+    font-size: 12px;
   }
 `;
 
