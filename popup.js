@@ -64,8 +64,14 @@ class TrackternJobSaver {
       
       const results = await chrome.scripting.executeScript({
         target: { tabId: currentTab.id },
-        function: this.extractJobInfo,
-        args: []
+        function: () => {
+          console.log('Tracktern: Simple test function executing');
+          return {
+            title: 'TEST TITLE',
+            company: 'TEST COMPANY', 
+            description: 'TEST DESCRIPTION'
+          };
+        }
       });
 
       console.log('TrackternJobSaver: Script execution results:', results);
