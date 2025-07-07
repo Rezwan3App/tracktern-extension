@@ -41,6 +41,14 @@ class TrackternJobSaver {
     try {
       const result = await chrome.storage.sync.get(['airtableConfig']);
       this.config = result.airtableConfig;
+      if (!this.config) {
+        // First run – default to local storage mode
+        this.config = {
+          storageType: 'local',
+          setupDate: new Date().toISOString()
+        };
+        await chrome.storage.sync.set({ airtableConfig: this.config });
+      }
     } catch (error) {
       console.error('Error loading config:', error);
     }
@@ -700,13 +708,6 @@ class TrackternJobSaver {
   }
 
   async handleSaveToAirtable() {
-    // Check if we have any storage configured
-    if (!this.config) {
-      this.showSmartSetup();
-      return;
-    }
-
-    // We have config, save directly
     await this.saveJob();
   }
 
@@ -1422,11 +1423,7 @@ class TrackternJobSaver {
   }
 
   async getJobList() {
-    if (this.config?.storageType === 'local') {
-      return await this.getLocalJobs();
-    } else {
-      return await this.getAirtableJobs();
-    }
+    return await this.getLocalJobs();
   }
 
   async getLocalJobs() {
@@ -1624,32 +1621,21 @@ class TrackternJobSaver {
   async deleteJob(jobId) {
     if(!confirm('Delete this job?')) return;
     if(this.config?.storageType==='local') {
-       const result=await chrome.storage.local.get(['savedJobs']);
-       const jobs=(result.savedJobs||[]).filter(j=>j.id!==jobId);
-       await chrome.storage.local.set({savedJobs:jobs});
+       const result = await chrome.storage.local.get(['savedJobs']);
+       const jobs = (result.savedJobs || []).filter(j => j.id !== jobId);
+       await chrome.storage.local.set({ savedJobs: jobs });
        this.showStatus('Deleted!', 'success');
        this.showJobList();
-    }else {
-       // Airtable delete
-       try {
-         const url=`https://api.airtable.com/v0/${this.config.baseId}/${encodeURIComponent(this.config.tableName)}/${jobId}`;
-         const resp=await fetch(url,{method:'DELETE',headers:{'Authorization':`Bearer ${this.config.patToken}`}});
-         if(!resp.ok) throw new Error('API error');
-         this.showStatus('Deleted!', 'success');
-         this.showJobList();
-       }catch(err){this.showStatus('Delete failed','error');}
     }
   }
 
   async updateJobStatus(jobId, status) {
-    if(this.config?.storageType==='local') {
-       const result=await chrome.storage.local.get(['savedJobs']);
-       const jobs=result.savedJobs||[];
-       const job=jobs.find(j=>j.id===jobId);
-       if(job){job.fields['Status']=status;await chrome.storage.local.set({savedJobs:jobs});}
-    }else {
-       const url=`https://api.airtable.com/v0/${this.config.baseId}/${encodeURIComponent(this.config.tableName)}/${jobId}`;
-       await fetch(url,{method:'PATCH',headers:{'Authorization':`Bearer ${this.config.patToken}`,'Content-Type':'application/json'},body:JSON.stringify({fields:{'Status':status}})});
+    const result = await chrome.storage.local.get(['savedJobs']);
+    const jobs = result.savedJobs || [];
+    const job = jobs.find(j => j.id === jobId);
+    if (job) {
+      job.fields['Status'] = status;
+      await chrome.storage.local.set({ savedJobs: jobs });
     }
     // update UI badge quickly
     this.showJobList();
