@@ -1354,6 +1354,10 @@ class TrackternJobSaver {
     try {
       const jobs = await this.getJobList();
       const jobCount = jobs.length;
+      const statuses = ['To Apply','Applied','Interview','Rejected','Offer'];
+      const counts = {};
+      statuses.forEach(s=>counts[s]=0);
+      jobs.forEach(j=>{const st=j.fields['Status']||'To Apply'; if(counts[st]!==undefined) counts[st]++;});
       
       document.body.innerHTML = `
         <div class="job-list-screen">
@@ -1361,6 +1365,9 @@ class TrackternJobSaver {
             <h3>💼 Tracktern</h3>
             <div class="storage-info">
               <div class="job-count">${jobCount} job${jobCount !== 1 ? 's' : ''} saved</div>
+              <div class="status-counters">
+                ${statuses.map(s=>`<span class="chip chip-${s.toLowerCase().replace(/\s/g,'-')}">${counts[s]} ${s}</span>`).join('')}
+              </div>
               <div class="storage-type">${this.config?.storageType === 'local' ? '💾 Local' : '☁️ Airtable'}</div>
             </div>
           </div>
@@ -2156,6 +2163,25 @@ const styles = `
   .troubleshoot-content strong {
     color: #2d3748;
   }
+  
+  .status-counters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top:4px;
+  }
+  .chip {
+    font-size:10px;
+    padding:2px 6px;
+    border-radius:3px;
+    font-weight:500;
+    color:white;
+  }
+  .chip-to-apply{background:#3182ce;}
+  .chip-applied{background:#38a169;}
+  .chip-interview{background:#d69e2e;}
+  .chip-rejected{background:#e53e3e;}
+  .chip-offer{background:#805ad5;}
 `;
 
 // Inject styles
