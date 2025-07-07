@@ -7,14 +7,23 @@ class TrackternJobSaver {
   }
 
   async init() {
+    console.log('TrackternJobSaver: Initializing...');
+    
     try {
+      console.log('TrackternJobSaver: Loading configuration...');
       await this.loadConfiguration();
+      
+      console.log('TrackternJobSaver: Setting up event listeners...');
       this.setupEventListeners();
+      
+      console.log('TrackternJobSaver: Loading job form...');
       // Always start by scraping and showing job form
       await this.loadJobAndShowForm();
+      
       this.isInitialized = true;
+      console.log('TrackternJobSaver: Initialization complete!');
     } catch (error) {
-      console.error('Initialization error:', error);
+      console.error('TrackternJobSaver: Initialization error:', error);
       this.showError('Failed to initialize extension');
     }
   }
@@ -45,9 +54,13 @@ class TrackternJobSaver {
   }
 
   async scrapeCurrentPage() {
+    console.log('TrackternJobSaver: Starting scrapeCurrentPage...');
+    
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       const currentTab = tabs[0];
+      
+      console.log('TrackternJobSaver: Current tab:', currentTab.url);
       
       const results = await chrome.scripting.executeScript({
         target: { tabId: currentTab.id },
@@ -55,17 +68,22 @@ class TrackternJobSaver {
         args: []
       });
 
+      console.log('TrackternJobSaver: Script execution results:', results);
+
       if (results && results[0]?.result) {
-        return {
+        const jobData = {
           ...results[0].result,
           url: currentTab.url,
           domain: new URL(currentTab.url).hostname
         };
+        console.log('TrackternJobSaver: Final job data:', jobData);
+        return jobData;
       }
     } catch (error) {
-      console.error('Scraping failed:', error);
+      console.error('TrackternJobSaver: Scraping failed:', error);
     }
     
+    console.log('TrackternJobSaver: Returning empty data');
     return {};
   }
 
@@ -195,26 +213,59 @@ class TrackternJobSaver {
 
     // Fallback: if nothing found, try generic approach
     if (!result.title && !result.company && !result.description) {
-      console.log('Tracktern: No data found with selectors, trying fallback...');
+      console.log('Tracktern: No data found with selectors, trying aggressive fallback...');
       
       // Try to find the largest heading as title
-      const headings = document.querySelectorAll('h1, h2, h3');
+      const headings = document.querySelectorAll('h1, h2, h3, .title, [class*="title"], [class*="job"]');
       for (const heading of headings) {
         const text = heading.innerText?.trim();
-        if (text && text.length > 5 && text.length < 200) {
+        if (text && text.length > 5 && text.length < 200 && !text.includes('©') && !text.includes('Sign in')) {
           result.title = text;
           console.log('Tracktern: Found title via fallback:', text);
           break;
         }
       }
       
-      // Try to find company in page title or meta
+      // Try to find company in page title, URLs, or anywhere on page
       const pageTitle = document.title;
       if (pageTitle) {
-        const companyMatch = pageTitle.match(/at\s+([^|]+)/i) || pageTitle.match(/\|\s*([^|]+)$/);
+        const companyMatch = pageTitle.match(/at\s+([^|•-]+)/i) || 
+                           pageTitle.match(/\|\s*([^|•-]+)/i) ||
+                           pageTitle.match(/•\s*([^|•-]+)/i) ||
+                           pageTitle.match(/-\s*([^|•-]+)/i);
         if (companyMatch) {
           result.company = companyMatch[1].trim();
           console.log('Tracktern: Found company via page title:', result.company);
+        }
+      }
+      
+      // Try URL-based extraction
+      const url = window.location.href;
+      if (url.includes('linkedin.com')) {
+        // Extract from LinkedIn URL patterns
+        const linkedinMatch = url.match(/\/company\/([^\/]+)/);
+        if (linkedinMatch && !result.company) {
+          result.company = linkedinMatch[1].replace(/-/g, ' ');
+          console.log('Tracktern: Found company via LinkedIn URL:', result.company);
+        }
+      }
+      
+      // Last resort: scan all text for job-like patterns
+      if (!result.title) {
+        const allText = document.body.innerText;
+        const jobTitlePatterns = [
+          /Job Title:\s*([^\n]+)/i,
+          /Position:\s*([^\n]+)/i,
+          /Role:\s*([^\n]+)/i
+        ];
+        
+        for (const pattern of jobTitlePatterns) {
+          const match = allText.match(pattern);
+          if (match) {
+            result.title = match[1].trim();
+            console.log('Tracktern: Found title via text pattern:', result.title);
+            break;
+          }
         }
       }
     }
@@ -763,7 +814,10 @@ styleSheet.textContent = styles;
 document.head.appendChild(styleSheet);
 
 // Initialize app when DOM is ready
+console.log('TrackternJobSaver: Script loaded, waiting for DOM...');
+
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('TrackternJobSaver: DOM ready, creating instance...');
   new TrackternJobSaver();
 });
 
