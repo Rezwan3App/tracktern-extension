@@ -749,9 +749,9 @@ class TrackternJobSaver {
   async startAutoSetup() {
     this.showStatus('Opening Airtable for auto-setup...', 'info');
     
-    // Open Airtable with auto-setup URL
+    // Open Airtable to create new base
     chrome.tabs.create({
-      url: 'https://airtable.com/templates/expFo1yNQPYwhey5n/job-applications-tracker',
+      url: 'https://airtable.com/create/base',
       active: true
     });
 
@@ -761,39 +761,62 @@ class TrackternJobSaver {
   showAutoSetupInstructions() {
     document.body.innerHTML = `
       <div class="setup-screen">
-        <h3>🎯 Auto-Setup Instructions</h3>
+        <h3>🎯 Quick Setup Instructions</h3>
         
         <div class="steps">
           <div class="step">
             <span class="step-number">1</span>
             <div class="step-content">
-              <strong>Use Template</strong>
-              <p>Click "Use template" on the Job Tracker that just opened</p>
+              <strong>Create New Base</strong>
+              <p>On the Airtable page that opened, click "Start from scratch" or use any template</p>
+              <p>Name it something like "Job Tracker" or "Job Applications"</p>
             </div>
           </div>
           
           <div class="step">
             <span class="step-number">2</span>
             <div class="step-content">
-              <strong>Create Token</strong>
+              <strong>Create Access Token</strong>
               <p>Go to <a href="https://airtable.com/create/tokens" target="_blank">airtable.com/create/tokens</a></p>
-              <p>Create token with: data.records:read, data.records:write, schema.bases:read</p>
+              <p><strong>Required scopes:</strong></p>
+              <ul>
+                <li>✓ data.records:read</li>
+                <li>✓ data.records:write</li>
+                <li>✓ schema.bases:read</li>
+              </ul>
+              <p><strong>Add base access:</strong> Select your new Job Tracker base</p>
             </div>
           </div>
           
           <div class="step">
             <span class="step-number">3</span>
             <div class="step-content">
-              <strong>Paste Token</strong>
+              <strong>Connect Extension</strong>
               <div class="token-input">
-                <input type="password" id="pat-input" placeholder="Paste your token here" />
-                <button id="connect-auto" class="primary-btn">Connect</button>
+                <input type="password" id="pat-input" placeholder="Paste your Personal Access Token here" />
+                <button id="connect-auto" class="primary-btn">Connect & Setup</button>
               </div>
             </div>
           </div>
         </div>
         
         <div id="status" class="status"></div>
+        
+        <div class="troubleshooting">
+          <details>
+            <summary>🔧 Troubleshooting</summary>
+            <div class="troubleshoot-content">
+              <p><strong>Common Issues:</strong></p>
+              <ul>
+                <li><strong>401 Error:</strong> Token is invalid or expired - create a new one</li>
+                <li><strong>403 Error:</strong> Missing required scopes - check all three checkboxes</li>
+                <li><strong>No bases found:</strong> Make sure to grant base access when creating token</li>
+                <li><strong>Token format:</strong> Should start with "pat" and be ~50 characters</li>
+              </ul>
+              <p><strong>Need help?</strong> Check the browser console (F12) for detailed error messages.</p>
+            </div>
+          </details>
+        </div>
         
         <div class="footer">
           <button id="back-to-options" class="secondary-btn">← Back to options</button>
@@ -813,36 +836,51 @@ class TrackternJobSaver {
       return;
     }
 
-    this.showStatus('Connecting and setting up your job tracker...', 'info');
+    if (!token.startsWith('pat')) {
+      this.showStatus('Invalid token format. Personal Access Tokens should start with "pat"', 'error');
+      return;
+    }
+
+    this.showStatus('Testing token and finding your bases...', 'info');
 
     try {
-      // Get all bases and find the job tracker template
+      // Get all bases 
       const bases = await this.getAirtableBases(token);
       
-      // Look for recently created job/application base (likely the template)
-      const jobBase = bases.find(base => 
+      if (bases.length === 0) {
+        throw new Error('No bases found in your Airtable account. Please create a base first.');
+      }
+
+      this.showStatus('Found ' + bases.length + ' base(s). Setting up job tracker...', 'info');
+
+      // Look for job-related base, otherwise use the most recently created one
+      let jobBase = bases.find(base => 
         base.name.toLowerCase().includes('job') || 
         base.name.toLowerCase().includes('application') ||
-        base.name.toLowerCase().includes('tracker')
-      ) || bases[0]; // Fallback to first base
+        base.name.toLowerCase().includes('tracker') ||
+        base.name.toLowerCase().includes('career')
+      );
 
+      // If no job-related base found, use the first one
       if (!jobBase) {
-        throw new Error('No bases found. Please create the Job Tracker template first.');
+        jobBase = bases[0];
+        console.log('Tracktern: No job-related base found, using:', jobBase.name);
       }
+
+      console.log('Tracktern: Using base:', jobBase.name, jobBase.id);
 
       await this.saveConfiguration(token, jobBase.id);
       
-      this.showStatus('✅ Setup complete! Saving your job...', 'success');
+      this.showStatus('✅ Connected successfully! Ready to save jobs.', 'success');
       
-      // Auto-save the current job and show success
-      setTimeout(async () => {
-        await this.saveJob();
+      // Go to job list after successful setup
+      setTimeout(() => {
         this.showJobList();
-      }, 1000);
+      }, 1500);
       
     } catch (error) {
       console.error('Auto-setup error:', error);
-      this.showStatus(`❌ Setup failed: ${error.message}`, 'error');
+      this.showStatus(`❌ ${error.message}`, 'error');
     }
   }
 
@@ -866,39 +904,42 @@ class TrackternJobSaver {
   showSetupInstructions() {
     document.body.innerHTML = `
       <div class="setup-screen">
-        <h3>Connect to Airtable</h3>
-        <p class="setup-intro">We need to connect to your Airtable account to save jobs.</p>
+        <h3>🔧 Manual Airtable Setup</h3>
+        <p class="setup-intro">Connect to your existing Airtable base manually.</p>
         
         <div class="steps">
           <div class="step">
             <span class="step-number">1</span>
             <div class="step-content">
               <strong>Create Personal Access Token</strong>
-              <p>On the Airtable page that just opened, click "Create new token"</p>
+              <p><a href="https://airtable.com/create/tokens" target="_blank">Go to airtable.com/create/tokens</a></p>
+              <p>Click "Create new token" and give it a name like "Job Tracker Extension"</p>
             </div>
           </div>
           
           <div class="step">
             <span class="step-number">2</span>
             <div class="step-content">
-              <strong>Set Permissions</strong>
-              <p>Enable these scopes:</p>
+              <strong>Set Required Permissions</strong>
+              <p><strong>Scopes (check these boxes):</strong></p>
               <ul>
-                <li>data.records:read</li>
-                <li>data.records:write</li>
-                <li>schema.bases:read</li>
+                <li>✓ data.records:read</li>
+                <li>✓ data.records:write</li>
+                <li>✓ schema.bases:read</li>
               </ul>
+              <p><strong>Base Access:</strong> Select the base you want to use for job tracking</p>
             </div>
           </div>
           
           <div class="step">
             <span class="step-number">3</span>
             <div class="step-content">
-              <strong>Paste Your Token</strong>
+              <strong>Connect Extension</strong>
               <div class="token-input">
                 <input type="password" id="pat-input" placeholder="Paste your Personal Access Token here" />
-                <button id="verify-token" class="primary-btn">Connect</button>
+                <button id="verify-token" class="primary-btn">Test & Connect</button>
               </div>
+              <p class="help-text">Token should start with "pat" and be about 50+ characters long</p>
             </div>
           </div>
         </div>
@@ -957,19 +998,45 @@ class TrackternJobSaver {
   }
 
   async getAirtableBases(token) {
-    const response = await fetch('https://api.airtable.com/v0/meta/bases', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Invalid token: ${response.status}`);
+    console.log('Tracktern: Testing Airtable token...');
+    
+    if (!token || token.length < 10) {
+      throw new Error('Token appears to be invalid (too short)');
     }
 
-    const data = await response.json();
-    return data.bases || [];
+    try {
+      const response = await fetch('https://api.airtable.com/v0/meta/bases', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Tracktern: Airtable API response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Tracktern: Airtable API error:', errorData);
+        
+        if (response.status === 401) {
+          throw new Error('Invalid token. Please check that your Personal Access Token is correct and has the required permissions.');
+        } else if (response.status === 403) {
+          throw new Error('Token does not have required permissions. Please ensure you have enabled: data.records:read, data.records:write, schema.bases:read');
+        } else {
+          throw new Error(`API Error ${response.status}: ${errorData.error?.message || 'Unknown error'}`);
+        }
+      }
+
+      const data = await response.json();
+      console.log('Tracktern: Found', data.bases?.length || 0, 'bases');
+      return data.bases || [];
+      
+    } catch (error) {
+      if (error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your internet connection.');
+      }
+      throw error;
+    }
   }
 
   async findOrCreateJobBase(token, bases) {
@@ -994,32 +1061,51 @@ class TrackternJobSaver {
   }
 
   async ensureTableStructure(token, baseId) {
-    // Get base schema to check existing tables
-    const schemaResponse = await fetch(`https://api.airtable.com/v0/meta/bases/${baseId}/tables`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-
-    if (!schemaResponse.ok) {
-      throw new Error('Could not access base schema');
-    }
-
-    const schema = await schemaResponse.json();
+    console.log('Tracktern: Getting base schema for', baseId);
     
-    // Find job-related table or use first table
-    let table = schema.tables.find(t => 
-      t.name.toLowerCase().includes('job') || 
-      t.name.toLowerCase().includes('application') ||
-      t.name.toLowerCase().includes('position')
-    ) || schema.tables[0];
+    try {
+      // Get base schema to check existing tables
+      const schemaResponse = await fetch(`https://api.airtable.com/v0/meta/bases/${baseId}/tables`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
 
-    if (!table) {
-      throw new Error('No tables found in base');
+      if (!schemaResponse.ok) {
+        const errorData = await schemaResponse.json().catch(() => ({}));
+        throw new Error(`Could not access base schema: ${schemaResponse.status} ${errorData.error?.message || ''}`);
+      }
+
+      const schema = await schemaResponse.json();
+      console.log('Tracktern: Found', schema.tables?.length || 0, 'tables in base');
+      
+      if (!schema.tables || schema.tables.length === 0) {
+        throw new Error('No tables found in base. Please create at least one table in your Airtable base.');
+      }
+      
+      // Find job-related table or use first table
+      let table = schema.tables.find(t => 
+        t.name.toLowerCase().includes('job') || 
+        t.name.toLowerCase().includes('application') ||
+        t.name.toLowerCase().includes('position') ||
+        t.name.toLowerCase().includes('tracker') ||
+        t.name.toLowerCase().includes('career')
+      );
+
+      if (!table) {
+        table = schema.tables[0];
+        console.log('Tracktern: No job-related table found, using first table:', table.name);
+      } else {
+        console.log('Tracktern: Found job-related table:', table.name);
+      }
+
+      return table.name;
+      
+    } catch (error) {
+      console.error('Tracktern: Error getting table structure:', error);
+      throw error;
     }
-
-    return table.name;
   }
 
   async saveConfiguration(token, baseId) {
@@ -1675,6 +1761,46 @@ const styles = `
     color: #a0aec0;
     margin: 15px 0;
     font-size: 12px;
+  }
+  
+  /* Troubleshooting Styles */
+  .troubleshooting {
+    margin: 15px 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+  }
+  
+  .troubleshooting summary {
+    padding: 10px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a5568;
+    background: #f7fafc;
+    border-radius: 6px;
+  }
+  
+  .troubleshooting summary:hover {
+    background: #edf2f7;
+  }
+  
+  .troubleshoot-content {
+    padding: 10px;
+    font-size: 12px;
+  }
+  
+  .troubleshoot-content ul {
+    margin: 8px 0;
+    padding-left: 16px;
+  }
+  
+  .troubleshoot-content li {
+    margin: 4px 0;
+    color: #4a5568;
+  }
+  
+  .troubleshoot-content strong {
+    color: #2d3748;
   }
 `;
 
