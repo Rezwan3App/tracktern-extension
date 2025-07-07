@@ -700,8 +700,8 @@ class TrackternJobSaver {
   }
 
   async handleSaveToAirtable() {
-    // Check if we have Airtable config
-    if (!this.config?.patToken) {
+    // Check if we have any storage configured
+    if (!this.config) {
       this.showSmartSetup();
       return;
     }
@@ -711,25 +711,43 @@ class TrackternJobSaver {
   }
 
   showSmartSetup() {
-    this.showStatus('Checking Airtable connection...', 'info');
+    this.showStatus('Choose how you want to save your jobs...', 'info');
     
     document.body.innerHTML = `
       <div class="setup-screen">
-        <h3>🚀 Quick Airtable Setup</h3>
-        <p class="setup-intro">Let's get you connected to Airtable in one click!</p>
+        <h3>� Choose Your Storage Method</h3>
+        <p class="setup-intro">Pick the option that works best for you:</p>
         
-        <div class="setup-options">
-          <button id="auto-setup" class="primary-btn">
-            ✨ Auto-Setup (Recommended)
-          </button>
-          <p class="help-text">We'll create a "Job Tracker" base for you automatically</p>
+        <div class="storage-options">
+          <div class="storage-option" id="local-storage">
+            <div class="option-icon">💾</div>
+            <div class="option-content">
+              <h4>Local Storage (Recommended)</h4>
+              <p>Save jobs in your browser - simple and instant</p>
+              <ul>
+                <li>✅ No setup required</li>
+                <li>✅ Works offline</li>
+                <li>✅ Export to CSV anytime</li>
+                <li>⚠️ Data stays on this device only</li>
+              </ul>
+              <button class="primary-btn">Use Local Storage</button>
+            </div>
+          </div>
           
-          <div class="divider">or</div>
-          
-          <button id="manual-setup" class="secondary-btn">
-            🔧 Manual Setup
-          </button>
-          <p class="help-text">Use existing base with Personal Access Token</p>
+          <div class="storage-option" id="airtable-sync">
+            <div class="option-icon">☁️</div>
+            <div class="option-content">
+              <h4>Airtable Sync (Advanced)</h4>
+              <p>Cloud sync with powerful database features</p>
+              <ul>
+                <li>✅ Access from anywhere</li>
+                <li>✅ Advanced filtering & views</li>
+                <li>✅ Share with team</li>
+                <li>⚠️ Requires Airtable account setup</li>
+              </ul>
+              <button class="secondary-btn">Setup Airtable</button>
+            </div>
+          </div>
         </div>
         
         <div id="status" class="status"></div>
@@ -741,9 +759,144 @@ class TrackternJobSaver {
     `;
     
     // Set up event listeners
-    document.getElementById('auto-setup')?.addEventListener('click', () => this.startAutoSetup());
-    document.getElementById('manual-setup')?.addEventListener('click', () => this.startManualSetup());
+    document.getElementById('local-storage')?.querySelector('button')?.addEventListener('click', () => this.setupLocalStorage());
+    document.getElementById('airtable-sync')?.querySelector('button')?.addEventListener('click', () => this.showAirtableOptions());
     document.getElementById('back-to-job')?.addEventListener('click', () => this.loadJobAndShowForm());
+  }
+
+  async setupLocalStorage() {
+    this.showStatus('Setting up local storage...', 'info');
+    
+    // Configure for local storage
+    const config = {
+      storageType: 'local',
+      setupDate: new Date().toISOString()
+    };
+
+    await chrome.storage.sync.set({ airtableConfig: config });
+    this.config = config;
+    
+    this.showStatus('✅ Local storage ready! You can now save jobs.', 'success');
+    
+    setTimeout(() => {
+      this.showJobList();
+    }, 1500);
+  }
+
+  showAirtableOptions() {
+    document.body.innerHTML = `
+      <div class="setup-screen">
+        <h3>☁️ Airtable Setup</h3>
+        <p class="setup-intro">Choose your Airtable setup method:</p>
+        
+        <div class="setup-options">
+          <button id="use-template" class="primary-btn">
+            📋 Use Our Template (Easy)
+          </button>
+          <p class="help-text">Copy our pre-made Job Tracker base to your account</p>
+          
+          <div class="divider">or</div>
+          
+          <button id="manual-setup" class="secondary-btn">
+            🔧 Connect Existing Base
+          </button>
+          <p class="help-text">Use your own Airtable base</p>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="footer">
+          <button id="back-to-storage" class="secondary-btn">← Back to storage options</button>
+        </div>
+      </div>
+    `;
+    
+    // Set up event listeners
+    document.getElementById('use-template')?.addEventListener('click', () => this.startTemplateSetup());
+    document.getElementById('manual-setup')?.addEventListener('click', () => this.startManualSetup());
+    document.getElementById('back-to-storage')?.addEventListener('click', () => this.showSmartSetup());
+  }
+
+  startTemplateSetup() {
+    this.showStatus('Opening Airtable base creation...', 'info');
+    
+    // Open Airtable base creation since we can't share a template easily
+    chrome.tabs.create({
+      url: 'https://airtable.com/create/base',
+      active: true
+    });
+
+    this.showTemplateInstructions();
+  }
+
+  showTemplateInstructions() {
+    document.body.innerHTML = `
+      <div class="setup-screen">
+        <h3>📋 Create Job Tracker Base</h3>
+        
+        <div class="steps">
+          <div class="step">
+            <span class="step-number">1</span>
+            <div class="step-content">
+              <strong>Create New Base</strong>
+              <p>On the page that opened, click "Start from scratch"</p>
+              <p>Name it "Job Tracker" or similar</p>
+            </div>
+          </div>
+          
+          <div class="step">
+            <span class="step-number">2</span>
+            <div class="step-content">
+              <strong>Recommended Columns</strong>
+              <p>Add these columns to your table:</p>
+              <ul>
+                <li><strong>Job Title</strong> (Single line text)</li>
+                <li><strong>Company</strong> (Single line text)</li>
+                <li><strong>Description</strong> (Long text)</li>
+                <li><strong>URL</strong> (URL)</li>
+                <li><strong>Status</strong> (Single select: To Apply, Applied, Interview, Rejected)</li>
+                <li><strong>Date Added</strong> (Date)</li>
+              </ul>
+            </div>
+          </div>
+          
+          <div class="step">
+            <span class="step-number">3</span>
+            <div class="step-content">
+              <strong>Create Access Token</strong>
+              <p>Go to <a href="https://airtable.com/create/tokens" target="_blank">airtable.com/create/tokens</a></p>
+              <p>Create token with these scopes:</p>
+              <ul>
+                <li>✓ data.records:read</li>
+                <li>✓ data.records:write</li>
+                <li>✓ schema.bases:read</li>
+              </ul>
+              <p>Select your Job Tracker base in "Base Access"</p>
+            </div>
+          </div>
+          
+          <div class="step">
+            <span class="step-number">4</span>
+            <div class="step-content">
+              <strong>Connect Extension</strong>
+              <div class="token-input">
+                <input type="password" id="pat-input" placeholder="Paste your Personal Access Token" />
+                <button id="connect-template" class="primary-btn">Connect</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div id="status" class="status"></div>
+        
+        <div class="footer">
+          <button id="try-local" class="secondary-btn">← Use Local Storage Instead</button>
+        </div>
+      </div>
+    `;
+    
+    document.getElementById('connect-template')?.addEventListener('click', () => this.connectAutoSetup());
+    document.getElementById('try-local')?.addEventListener('click', () => this.setupLocalStorage());
   }
 
   async startAutoSetup() {
@@ -1137,19 +1290,59 @@ class TrackternJobSaver {
       return;
     }
 
-    this.showStatus('Saving to Airtable...', 'info');
+    // Check storage type
+    if (this.config?.storageType === 'local') {
+      await this.saveJobLocally(jobData);
+    } else {
+      await this.saveJobToAirtable(jobData);
+    }
+  }
+
+  async saveJobLocally(jobData) {
+    this.showStatus('Saving job locally...', 'info');
 
     try {
-      await this.createRecord(jobData);
-      this.showStatus('✅ Job saved successfully!', 'success');
+      // Get existing jobs from local storage
+      const result = await chrome.storage.local.get(['savedJobs']);
+      const savedJobs = result.savedJobs || [];
       
-      // After saving, show job list
+      // Add new job with unique ID
+      const newJob = {
+        id: Date.now().toString(),
+        fields: jobData,
+        createdTime: new Date().toISOString()
+      };
+      
+      savedJobs.unshift(newJob); // Add to beginning
+      
+      // Save back to storage
+      await chrome.storage.local.set({ savedJobs });
+      
+      this.showStatus('✅ Job saved locally!', 'success');
+      
       setTimeout(() => {
         this.showJobList();
       }, 1500);
       
     } catch (error) {
-      console.error('Save error:', error);
+      console.error('Local save error:', error);
+      this.showStatus(`❌ Save failed: ${error.message}`, 'error');
+    }
+  }
+
+  async saveJobToAirtable(jobData) {
+    this.showStatus('Saving to Airtable...', 'info');
+
+    try {
+      await this.createRecord(jobData);
+      this.showStatus('✅ Job saved to Airtable!', 'success');
+      
+      setTimeout(() => {
+        this.showJobList();
+      }, 1500);
+      
+    } catch (error) {
+      console.error('Airtable save error:', error);
       this.showStatus(`❌ Save failed: ${error.message}`, 'error');
     }
   }
@@ -1163,9 +1356,12 @@ class TrackternJobSaver {
       
       document.body.innerHTML = `
         <div class="job-list-screen">
-          <div class="header">
+                                      <div class="header">
             <h3>💼 Job Tracker</h3>
-            <div class="job-count">${jobCount} job${jobCount !== 1 ? 's' : ''} saved</div>
+            <div class="storage-info">
+              <div class="job-count">${jobCount} job${jobCount !== 1 ? 's' : ''} saved</div>
+              <div class="storage-type">${this.config?.storageType === 'local' ? '💾 Local' : '☁️ Airtable'}</div>
+            </div>
           </div>
           
           <div class="actions">
@@ -1221,6 +1417,24 @@ class TrackternJobSaver {
   }
 
   async getJobList() {
+    if (this.config?.storageType === 'local') {
+      return await this.getLocalJobs();
+    } else {
+      return await this.getAirtableJobs();
+    }
+  }
+
+  async getLocalJobs() {
+    try {
+      const result = await chrome.storage.local.get(['savedJobs']);
+      return result.savedJobs || [];
+    } catch (error) {
+      console.error('Error getting local jobs:', error);
+      return [];
+    }
+  }
+
+  async getAirtableJobs() {
     if (!this.config?.patToken || !this.config?.baseId) {
       throw new Error('Airtable configuration not found');
     }
@@ -1271,6 +1485,8 @@ class TrackternJobSaver {
   }
 
   showSettings() {
+    const isLocal = this.config?.storageType === 'local';
+    
     document.body.innerHTML = `
       <div class="settings-screen">
         <div class="header">
@@ -1279,23 +1495,47 @@ class TrackternJobSaver {
         
         <div class="settings-list">
           <div class="setting-item">
-            <div class="setting-label">Airtable Base ID</div>
-            <div class="setting-value">${this.config?.baseId || 'Not configured'}</div>
+            <div class="setting-label">Storage Type</div>
+            <div class="setting-value">${isLocal ? '💾 Local Storage' : '☁️ Airtable'}</div>
           </div>
           
-          <div class="setting-item">
-            <div class="setting-label">Connection Status</div>
-            <div class="setting-value">${this.config?.patToken ? '✅ Connected' : '❌ Not connected'}</div>
-          </div>
+          ${isLocal ? `
+            <div class="setting-item">
+              <div class="setting-label">Data Location</div>
+              <div class="setting-value">This browser only</div>
+            </div>
+          ` : `
+            <div class="setting-item">
+              <div class="setting-label">Airtable Base ID</div>
+              <div class="setting-value">${this.config?.baseId || 'Not configured'}</div>
+            </div>
+            
+            <div class="setting-item">
+              <div class="setting-label">Connection Status</div>
+              <div class="setting-value">${this.config?.patToken ? '✅ Connected' : '❌ Not connected'}</div>
+            </div>
+          `}
         </div>
         
         <div class="settings-actions">
-          <button id="reconnect" class="primary-btn">
-            🔄 Reconnect Airtable
-          </button>
-          <button id="clear-config" class="danger-btn">
-            🗑️ Clear Configuration
-          </button>
+          ${isLocal ? `
+            <button id="switch-to-airtable" class="primary-btn">
+              ☁️ Switch to Airtable
+            </button>
+            <button id="clear-local-data" class="danger-btn">
+              🗑️ Clear All Local Data
+            </button>
+          ` : `
+            <button id="reconnect" class="primary-btn">
+              🔄 Reconnect Airtable
+            </button>
+            <button id="switch-to-local" class="secondary-btn">
+              💾 Switch to Local Storage
+            </button>
+            <button id="clear-config" class="danger-btn">
+              🗑️ Clear Configuration
+            </button>
+          `}
         </div>
         
         <div id="status" class="status"></div>
@@ -1306,9 +1546,27 @@ class TrackternJobSaver {
       </div>
     `;
     
-    document.getElementById('reconnect')?.addEventListener('click', () => this.showSmartSetup());
-    document.getElementById('clear-config')?.addEventListener('click', () => this.clearConfiguration());
+    // Set up event listeners based on storage type
+    if (isLocal) {
+      document.getElementById('switch-to-airtable')?.addEventListener('click', () => this.showSmartSetup());
+      document.getElementById('clear-local-data')?.addEventListener('click', () => this.clearLocalData());
+    } else {
+      document.getElementById('reconnect')?.addEventListener('click', () => this.showSmartSetup());
+      document.getElementById('switch-to-local')?.addEventListener('click', () => this.setupLocalStorage());
+      document.getElementById('clear-config')?.addEventListener('click', () => this.clearConfiguration());
+    }
+    
     document.getElementById('back-to-list')?.addEventListener('click', () => this.showJobList());
+  }
+
+  async clearLocalData() {
+    if (confirm('Are you sure you want to delete all your saved jobs? This cannot be undone.')) {
+      await chrome.storage.local.remove(['savedJobs']);
+      this.showStatus('✅ All local data cleared', 'success');
+      setTimeout(() => {
+        this.showJobList();
+      }, 1000);
+    }
   }
 
   async clearConfiguration() {
@@ -1761,6 +2019,77 @@ const styles = `
     color: #a0aec0;
     margin: 15px 0;
     font-size: 12px;
+  }
+  
+  /* Storage Options Styles */
+  .storage-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin: 20px 0;
+  }
+  
+  .storage-option {
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+  }
+  
+  .storage-option:hover {
+    border-color: #3182ce;
+    box-shadow: 0 4px 12px rgba(49, 130, 206, 0.1);
+  }
+  
+  .storage-option .option-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+  }
+  
+  .storage-option h4 {
+    margin: 0 0 8px 0;
+    color: #2d3748;
+    font-size: 16px;
+  }
+  
+  .storage-option p {
+    margin: 0 0 12px 0;
+    color: #4a5568;
+    font-size: 14px;
+  }
+  
+  .storage-option ul {
+    margin: 0 0 16px 0;
+    padding-left: 16px;
+    font-size: 13px;
+  }
+  
+  .storage-option li {
+    margin: 4px 0;
+    color: #4a5568;
+  }
+  
+  .storage-option button {
+    width: 100%;
+    margin: 0;
+  }
+  
+  /* Storage Info in Header */
+  .storage-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  
+  .storage-type {
+    font-size: 10px;
+    color: #718096;
+    background: #edf2f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-top: 2px;
   }
   
   /* Troubleshooting Styles */
