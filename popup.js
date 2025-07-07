@@ -105,17 +105,163 @@ class TrackternJobSaver {
           };
 
           const getDescriptionText = (selectorList) => {
+            // First try smart description detection based on headings
+            const smartDescription = getDescriptionAfterHeadings();
+            if (smartDescription) {
+              return smartDescription;
+            }
+            
+            // Fallback to selector-based approach
             for (const selector of selectorList) {
               const el = document.querySelector(selector);
               if (el) {
                 let text = el.innerText?.trim() || '';
-                text = text.replace(/Share this job.*$/i, '').replace(/Apply now.*$/i, '');
+                text = cleanDescriptionText(text);
                 if (text.length > 50) {
                   return text.length > 800 ? text.substring(0, 800) + '...' : text;
                 }
               }
             }
             return '';
+          };
+          
+          const getDescriptionAfterHeadings = () => {
+            console.log('Tracktern: Looking for description after headings...');
+            
+            // Look for common job description headings
+            const descriptionHeadings = [
+              'about', 'about the job', 'about this job', 'about the role', 'about this role',
+              'job description', 'job summary', 'description', 'overview', 'what you\'ll do',
+              'responsibilities', 'role description', 'position summary', 'the role',
+              'what we\'re looking for', 'role overview', 'position overview'
+            ];
+            
+            // Find all headings on the page
+            const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, [class*="heading"], [class*="title"], .font-weight-bold, strong');
+            
+            for (const heading of allHeadings) {
+              const headingText = heading.innerText?.trim().toLowerCase();
+              
+              if (headingText && descriptionHeadings.some(desc => headingText.includes(desc))) {
+                console.log('Tracktern: Found description heading:', headingText);
+                
+                // Try multiple strategies to get content after this heading
+                let description = '';
+                
+                // Strategy 1: Next sibling elements
+                let nextElement = heading.nextElementSibling;
+                let attempts = 0;
+                while (nextElement && attempts < 5) {
+                  const text = nextElement.innerText?.trim();
+                  if (text && text.length > 20) {
+                    description += text + ' ';
+                    if (description.length > 200) break; // Got enough content
+                  }
+                  nextElement = nextElement.nextElementSibling;
+                  attempts++;
+                }
+                
+                // Strategy 2: Look for content in parent container after heading
+                if (!description || description.length < 100) {
+                  const parent = heading.parentElement;
+                  if (parent) {
+                    const parentText = parent.innerText?.trim();
+                    if (parentText) {
+                      // Extract text after the heading text
+                      const headingIndex = parentText.toLowerCase().indexOf(headingText);
+                      if (headingIndex !== -1) {
+                        const afterHeading = parentText.substring(headingIndex + headingText.length).trim();
+                        if (afterHeading.length > description.length) {
+                          description = afterHeading;
+                        }
+                      }
+                    }
+                  }
+                }
+                
+                // Strategy 3: Look for following paragraphs in same container
+                if (!description || description.length < 100) {
+                  const container = heading.closest('div, section, article');
+                  if (container) {
+                    const paragraphs = container.querySelectorAll('p, div');
+                    let foundHeading = false;
+                    
+                    for (const para of paragraphs) {
+                      if (foundHeading) {
+                        const text = para.innerText?.trim();
+                        if (text && text.length > 20) {
+                          description += text + ' ';
+                          if (description.length > 300) break;
+                        }
+                      } else if (para.contains(heading) || para === heading) {
+                        foundHeading = true;
+                      }
+                    }
+                  }
+                }
+                
+                if (description.trim().length > 50) {
+                  const cleaned = cleanDescriptionText(description.trim());
+                  console.log('Tracktern: Found description after heading:', cleaned.substring(0, 100) + '...');
+                  return cleaned.length > 1000 ? cleaned.substring(0, 1000) + '...' : cleaned;
+                }
+              }
+            }
+            
+            console.log('Tracktern: No description found after headings');
+            return '';
+          };
+          
+          const cleanDescriptionText = (text) => {
+            if (!text) return '';
+            
+            // Remove common unwanted content
+            text = text.replace(/Share this job.*$/i, '');
+            text = text.replace(/Apply now.*$/i, '');
+            text = text.replace(/Show more.*$/i, '');
+            text = text.replace(/Show less.*$/i, '');
+            text = text.replace(/See more jobs like this.*$/i, '');
+            text = text.replace(/Apply for this job.*$/i, '');
+            text = text.replace(/Easy Apply.*$/i, '');
+            text = text.replace(/Quick Apply.*$/i, '');
+            text = text.replace(/Report this job.*$/i, '');
+            text = text.replace(/Save this job.*$/i, '');
+            text = text.replace(/Job ID.*$/i, '');
+            text = text.replace(/\d+\s+applicants.*$/i, '');
+            text = text.replace(/Posted.*ago.*$/i, '');
+            text = text.replace(/Reposted.*ago.*$/i, '');
+            text = text.replace(/Over \d+.*applicants.*$/i, '');
+            text = text.replace(/Promoted by.*$/i, '');
+            text = text.replace(/Actively reviewing.*$/i, '');
+            text = text.replace(/New York, NY.*$/i, '');
+            text = text.replace(/.*Reposted.*ago.*$/i, '');
+            text = text.replace(/.*ago.*Over.*applicants.*$/i, '');
+            text = text.replace(/.*·.*applicants.*$/i, '');
+            text = text.replace(/\d+\s+days?\s+ago.*$/i, '');
+            text = text.replace(/\d+\s+weeks?\s+ago.*$/i, '');
+            text = text.replace(/\d+\s+months?\s+ago.*$/i, '');
+            
+            // Remove lines that are just metadata (location, posting date, etc.)
+            const lines = text.split('\n');
+            const filteredLines = lines.filter(line => {
+              const trimmed = line.trim().toLowerCase();
+              return !(
+                trimmed.includes('applicants') ||
+                trimmed.includes('promoted by') ||
+                trimmed.includes('actively reviewing') ||
+                trimmed.includes('reposted') ||
+                /^[a-z\s,]+,\s+[a-z]{2}$/i.test(trimmed) || // Location format like "New York, NY"
+                trimmed.match(/^\d+\s+(day|week|month)s?\s+ago/) ||
+                trimmed.length < 20 // Very short lines are likely metadata
+              );
+            });
+            
+            text = filteredLines.join('\n');
+            
+            // Clean up multiple spaces and newlines
+            text = text.replace(/\s+/g, ' ').trim();
+            
+            return text;
           };
 
           let result = {
@@ -172,13 +318,6 @@ class TrackternJobSaver {
   // This function runs in the page context
   extractJobInfo() {
     console.log('Tracktern: Starting job extraction on', window.location.href);
-    
-    // Quick test - return test data first
-    return {
-      title: 'TEST TITLE',
-      company: 'TEST COMPANY',
-      description: 'TEST DESCRIPTION'
-    };
     
     const selectors = {
       title: [
@@ -270,17 +409,19 @@ class TrackternJobSaver {
     const getLongTextFromSelectors = (selectorList, fieldName) => {
       console.log(`Tracktern: Looking for ${fieldName} with selectors:`, selectorList);
       
+      // If looking for description, try smart heading-based detection first
+      if (fieldName === 'description') {
+        const smartDescription = getDescriptionAfterHeadings();
+        if (smartDescription) {
+          return smartDescription;
+        }
+      }
+      
       for (const selector of selectorList) {
         const el = document.querySelector(selector);
         if (el) {
           let text = el.innerText?.trim() || '';
-          
-          // Clean up description text
-          text = text.replace(/Share this job.*$/i, '');
-          text = text.replace(/Apply now.*$/i, '');
-          text = text.replace(/Show more.*$/i, '');
-          text = text.replace(/Show less.*$/i, '');
-          text = text.replace(/See more jobs like this.*$/i, '');
+          text = cleanDescriptionText(text);
           
           if (text.length > 50) {
             const finalText = text.length > 1000 ? text.substring(0, 1000) + '...' : text;
@@ -291,6 +432,145 @@ class TrackternJobSaver {
       }
       console.log(`Tracktern: No ${fieldName} found`);
       return '';
+    };
+    
+    const getDescriptionAfterHeadings = () => {
+      console.log('Tracktern: Looking for description after headings...');
+      
+      // Look for common job description headings
+      const descriptionHeadings = [
+        'about', 'about the job', 'about this job', 'about the role', 'about this role',
+        'job description', 'job summary', 'description', 'overview', 'what you\'ll do',
+        'responsibilities', 'role description', 'position summary', 'the role',
+        'what we\'re looking for', 'role overview', 'position overview'
+      ];
+      
+      // Find all headings on the page
+      const allHeadings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, [class*="heading"], [class*="title"], .font-weight-bold, strong');
+      
+      for (const heading of allHeadings) {
+        const headingText = heading.innerText?.trim().toLowerCase();
+        
+        if (headingText && descriptionHeadings.some(desc => headingText.includes(desc))) {
+          console.log('Tracktern: Found description heading:', headingText);
+          
+          // Try multiple strategies to get content after this heading
+          let description = '';
+          
+          // Strategy 1: Next sibling elements
+          let nextElement = heading.nextElementSibling;
+          let attempts = 0;
+          while (nextElement && attempts < 5) {
+            const text = nextElement.innerText?.trim();
+            if (text && text.length > 20) {
+              description += text + ' ';
+              if (description.length > 200) break; // Got enough content
+            }
+            nextElement = nextElement.nextElementSibling;
+            attempts++;
+          }
+          
+          // Strategy 2: Look for content in parent container after heading
+          if (!description || description.length < 100) {
+            const parent = heading.parentElement;
+            if (parent) {
+              const parentText = parent.innerText?.trim();
+              if (parentText) {
+                // Extract text after the heading text
+                const headingIndex = parentText.toLowerCase().indexOf(headingText);
+                if (headingIndex !== -1) {
+                  const afterHeading = parentText.substring(headingIndex + headingText.length).trim();
+                  if (afterHeading.length > description.length) {
+                    description = afterHeading;
+                  }
+                }
+              }
+            }
+          }
+          
+          // Strategy 3: Look for following paragraphs in same container
+          if (!description || description.length < 100) {
+            const container = heading.closest('div, section, article');
+            if (container) {
+              const paragraphs = container.querySelectorAll('p, div');
+              let foundHeading = false;
+              
+              for (const para of paragraphs) {
+                if (foundHeading) {
+                  const text = para.innerText?.trim();
+                  if (text && text.length > 20) {
+                    description += text + ' ';
+                    if (description.length > 300) break;
+                  }
+                } else if (para.contains(heading) || para === heading) {
+                  foundHeading = true;
+                }
+              }
+            }
+          }
+          
+          if (description.trim().length > 50) {
+            const cleaned = cleanDescriptionText(description.trim());
+            console.log('Tracktern: Found description after heading:', cleaned.substring(0, 100) + '...');
+            return cleaned.length > 1000 ? cleaned.substring(0, 1000) + '...' : cleaned;
+          }
+        }
+      }
+      
+      console.log('Tracktern: No description found after headings');
+      return '';
+    };
+    
+    const cleanDescriptionText = (text) => {
+      if (!text) return '';
+      
+      // Remove common unwanted content
+      text = text.replace(/Share this job.*$/i, '');
+      text = text.replace(/Apply now.*$/i, '');
+      text = text.replace(/Show more.*$/i, '');
+      text = text.replace(/Show less.*$/i, '');
+      text = text.replace(/See more jobs like this.*$/i, '');
+      text = text.replace(/Apply for this job.*$/i, '');
+      text = text.replace(/Easy Apply.*$/i, '');
+      text = text.replace(/Quick Apply.*$/i, '');
+      text = text.replace(/Report this job.*$/i, '');
+      text = text.replace(/Save this job.*$/i, '');
+      text = text.replace(/Job ID.*$/i, '');
+      text = text.replace(/\d+\s+applicants.*$/i, '');
+      text = text.replace(/Posted.*ago.*$/i, '');
+      text = text.replace(/Reposted.*ago.*$/i, '');
+      text = text.replace(/Over \d+.*applicants.*$/i, '');
+      text = text.replace(/Promoted by.*$/i, '');
+      text = text.replace(/Actively reviewing.*$/i, '');
+      text = text.replace(/New York, NY.*$/i, '');
+      text = text.replace(/.*Reposted.*ago.*$/i, '');
+      text = text.replace(/.*ago.*Over.*applicants.*$/i, '');
+      text = text.replace(/.*·.*applicants.*$/i, '');
+      text = text.replace(/\d+\s+days?\s+ago.*$/i, '');
+      text = text.replace(/\d+\s+weeks?\s+ago.*$/i, '');
+      text = text.replace(/\d+\s+months?\s+ago.*$/i, '');
+      
+      // Remove lines that are just metadata (location, posting date, etc.)
+      const lines = text.split('\n');
+      const filteredLines = lines.filter(line => {
+        const trimmed = line.trim().toLowerCase();
+        return !(
+          trimmed.includes('applicants') ||
+          trimmed.includes('promoted by') ||
+          trimmed.includes('actively reviewing') ||
+          trimmed.includes('reposted') ||
+          /^[a-z\s,]+,\s+[a-z]{2}$/i.test(trimmed) || // Location format like "New York, NY"
+          trimmed.match(/^\d+\s+(day|week|month)s?\s+ago/) ||
+          trimmed.length < 20 // Very short lines are likely metadata
+        );
+      });
+      
+      text = filteredLines.join('\n');
+      
+      // Clean up multiple spaces and newlines
+      text = text.replace(/\s+/g, ' ').trim();
+      
+      return text;
     };
 
     let result = {
