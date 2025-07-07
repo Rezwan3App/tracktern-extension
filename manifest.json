@@ -1,0 +1,17 @@
+{
+  "manifest_version": 3,
+  "name": "Tracktern Job Saver",
+  "version": "1.0",
+  "description": "Save job listings to Airtable from any site.",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}
+
