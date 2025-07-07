@@ -75,6 +75,15 @@ class TrackternJobSaver {
     
     const selectors = {
       title: [
+        // LinkedIn 2024 selectors
+        '.job-details-jobs-unified-top-card__job-title a',
+        '.job-details-jobs-unified-top-card__job-title',
+        '.jobs-unified-top-card__job-title a',
+        '.jobs-unified-top-card__job-title',
+        '.jobs-details__main-content h1',
+        '.t-24.t-bold.jobs-unified-top-card__job-title',
+        '.artdeco-entity-lockup__title',
+        // Generic job selectors
         'h1',
         '[data-qa="posting-title"]',
         '.topcard__title',
@@ -83,15 +92,21 @@ class TrackternJobSaver {
         '[class*="job-title"]',
         '[class*="posting-title"]',
         '.posting-headline__position',
-        '.job-details-jobs-unified-top-card__job-title',
-        '.jobs-unified-top-card__job-title',
-        '.t-24', // LinkedIn
-        '.jobs-details__main-content h1',
+        '.t-24', 
         'article h1',
         '[data-test="job-title"]',
-        '.position-title'
+        '.position-title',
+        '.job-post-title'
       ],
       company: [
+        // LinkedIn 2024 selectors
+        '.job-details-jobs-unified-top-card__company-name a',
+        '.job-details-jobs-unified-top-card__company-name',
+        '.jobs-unified-top-card__company-name a',
+        '.jobs-unified-top-card__company-name',
+        '.jobs-unified-top-card__subtitle-primary-grouping a',
+        '.artdeco-entity-lockup__subtitle',
+        // Generic company selectors
         '[data-qa="posting-company"]',
         '.topcard__org-name-link',
         '.topcard__flavor', 
@@ -99,27 +114,30 @@ class TrackternJobSaver {
         '[data-company-name]',
         '[class*="company"]',
         'a[href*="/company/"]',
-        '.jobs-unified-top-card__company-name',
-        '.job-details-jobs-unified-top-card__company-name',
-        '.jobs-unified-top-card__subtitle-primary-grouping',
         '.company-name',
         '[data-test="company-name"]',
-        '.employer'
+        '.employer',
+        '.job-company'
       ],
       description: [
+        // LinkedIn 2024 selectors
+        '.jobs-description-content__text',
+        '.jobs-description__content',
+        '.jobs-box__html-content',
+        '.jobs-description',
+        // Generic description selectors
         '[data-qa="job-description"]',
         '.description',
         '.jobsearch-jobDescriptionText',
         '[class*="job-description"]', 
         '[class*="description"]',
-        '.jobs-description-content__text',
-        '.jobs-box__html-content',
-        '.jobs-description',
         '.job-description-content',
         'article',
         'section',
         '[data-test="job-description"]',
-        '.job-details'
+        '.job-details',
+        '.job-description',
+        '.job-content'
       ]
     };
 
