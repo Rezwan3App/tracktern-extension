@@ -69,6 +69,8 @@ class TrackternJobSaver {
       });
 
       console.log('TrackternJobSaver: Script execution results:', results);
+      console.log('TrackternJobSaver: First result:', results[0]);
+      console.log('TrackternJobSaver: First result.result:', results[0]?.result);
 
       if (results && results[0]?.result) {
         const jobData = {
@@ -78,6 +80,8 @@ class TrackternJobSaver {
         };
         console.log('TrackternJobSaver: Final job data:', jobData);
         return jobData;
+      } else {
+        console.log('TrackternJobSaver: No valid result found in script execution');
       }
     } catch (error) {
       console.error('TrackternJobSaver: Scraping failed:', error);
@@ -90,6 +94,17 @@ class TrackternJobSaver {
   // This function runs in the page context
   extractJobInfo() {
     console.log('Tracktern: Starting job extraction on', window.location.href);
+    console.log('Tracktern: Function is executing!');
+    
+    // Quick test - return simple data to verify the mechanism works
+    const testResult = {
+      title: 'TEST TITLE',
+      company: 'TEST COMPANY', 
+      description: 'TEST DESCRIPTION',
+      scrapedAt: new Date().toISOString()
+    };
+    console.log('Tracktern: About to return test result:', testResult);
+    return testResult;
     
     const selectors = {
       title: [
