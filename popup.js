@@ -64,8 +64,85 @@ class TrackternJobSaver {
       
       const results = await chrome.scripting.executeScript({
         target: { tabId: currentTab.id },
-        function: this.extractJobInfo,
-        args: []
+        function: () => {
+          console.log('Tracktern: Job extraction starting on', window.location.href);
+          
+          const selectors = {
+            title: [
+              'h1', '.job-details-jobs-unified-top-card__job-title', '.jobs-unified-top-card__job-title',
+              '[data-qa="posting-title"]', '.topcard__title', '.jobsearch-JobInfoHeader-title',
+              '.job-title', '[class*="job-title"]', '.posting-headline__position'
+            ],
+            company: [
+              '.job-details-jobs-unified-top-card__company-name', '.jobs-unified-top-card__company-name',
+              '[data-qa="posting-company"]', '.topcard__org-name-link', '.jobsearch-InlineCompanyRating',
+              '.company-name', '[class*="company"]', 'a[href*="/company/"]'
+            ],
+            description: [
+              '.jobs-description-content__text', '.jobs-description__content', '.jobs-box__html-content',
+              '[data-qa="job-description"]', '.description', '.jobsearch-jobDescriptionText',
+              '[class*="job-description"]', '[class*="description"]', 'article', 'section'
+            ]
+          };
+
+          const getTextFromSelectors = (selectorList) => {
+            for (const selector of selectorList) {
+              const elements = document.querySelectorAll(selector);
+              for (const el of elements) {
+                const text = el.innerText?.trim();
+                if (text && text.length > 2 && text.length < 300) {
+                  console.log('Tracktern: Found text with', selector, ':', text);
+                  return text;
+                }
+              }
+            }
+            return '';
+          };
+
+          const getDescriptionText = (selectorList) => {
+            for (const selector of selectorList) {
+              const el = document.querySelector(selector);
+              if (el) {
+                let text = el.innerText?.trim() || '';
+                text = text.replace(/Share this job.*$/i, '').replace(/Apply now.*$/i, '');
+                if (text.length > 50) {
+                  return text.length > 800 ? text.substring(0, 800) + '...' : text;
+                }
+              }
+            }
+            return '';
+          };
+
+          let result = {
+            title: getTextFromSelectors(selectors.title),
+            company: getTextFromSelectors(selectors.company),
+            description: getDescriptionText(selectors.description)
+          };
+
+          // Fallback for title
+          if (!result.title) {
+            const headings = document.querySelectorAll('h1, h2, h3');
+            for (const heading of headings) {
+              const text = heading.innerText?.trim();
+              if (text && text.length > 5 && text.length < 200 && !text.includes('Sign in')) {
+                result.title = text;
+                break;
+              }
+            }
+          }
+
+          // Fallback for company from page title  
+          if (!result.company) {
+            const pageTitle = document.title;
+            const companyMatch = pageTitle.match(/at\s+([^|•-]+)/i) || pageTitle.match(/\|\s*([^|•-]+)/i);
+            if (companyMatch) {
+              result.company = companyMatch[1].trim();
+            }
+          }
+
+          console.log('Tracktern: Final result:', result);
+          return result;
+        }
       });
 
       console.log('TrackternJobSaver: Script execution results:', results);
