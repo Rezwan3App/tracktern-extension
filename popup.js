@@ -71,56 +71,80 @@ class TrackternJobSaver {
 
   // This function runs in the page context
   extractJobInfo() {
+    console.log('Tracktern: Starting job extraction on', window.location.href);
+    
     const selectors = {
       title: [
         'h1',
         '[data-qa="posting-title"]',
         '.topcard__title',
-        '.jobsearch-JobInfoHeader-title',
+        '.jobsearch-JobInfoHeader-title', 
         '.job-title',
         '[class*="job-title"]',
         '[class*="posting-title"]',
         '.posting-headline__position',
-        '.job-details-jobs-unified-top-card__job-title'
+        '.job-details-jobs-unified-top-card__job-title',
+        '.jobs-unified-top-card__job-title',
+        '.t-24', // LinkedIn
+        '.jobs-details__main-content h1',
+        'article h1',
+        '[data-test="job-title"]',
+        '.position-title'
       ],
       company: [
         '[data-qa="posting-company"]',
         '.topcard__org-name-link',
-        '.topcard__flavor',
+        '.topcard__flavor', 
         '.jobsearch-InlineCompanyRating',
         '[data-company-name]',
         '[class*="company"]',
         'a[href*="/company/"]',
         '.jobs-unified-top-card__company-name',
-        '.job-details-jobs-unified-top-card__company-name'
+        '.job-details-jobs-unified-top-card__company-name',
+        '.jobs-unified-top-card__subtitle-primary-grouping',
+        '.company-name',
+        '[data-test="company-name"]',
+        '.employer'
       ],
       description: [
         '[data-qa="job-description"]',
         '.description',
         '.jobsearch-jobDescriptionText',
-        '[class*="job-description"]',
+        '[class*="job-description"]', 
         '[class*="description"]',
         '.jobs-description-content__text',
         '.jobs-box__html-content',
+        '.jobs-description',
+        '.job-description-content',
         'article',
-        'section'
+        'section',
+        '[data-test="job-description"]',
+        '.job-details'
       ]
     };
 
-    const getTextFromSelectors = (selectorList) => {
+    const getTextFromSelectors = (selectorList, fieldName) => {
+      console.log(`Tracktern: Looking for ${fieldName} with selectors:`, selectorList);
+      
       for (const selector of selectorList) {
         const elements = document.querySelectorAll(selector);
+        console.log(`Tracktern: Selector "${selector}" found ${elements.length} elements`);
+        
         for (const el of elements) {
           const text = el.innerText?.trim();
           if (text && text.length > 2 && text.length < 300) {
+            console.log(`Tracktern: Found ${fieldName}:`, text);
             return text;
           }
         }
       }
+      console.log(`Tracktern: No ${fieldName} found`);
       return '';
     };
 
-    const getLongTextFromSelectors = (selectorList) => {
+    const getLongTextFromSelectors = (selectorList, fieldName) => {
+      console.log(`Tracktern: Looking for ${fieldName} with selectors:`, selectorList);
+      
       for (const selector of selectorList) {
         const el = document.querySelector(selector);
         if (el) {
@@ -134,19 +158,51 @@ class TrackternJobSaver {
           text = text.replace(/See more jobs like this.*$/i, '');
           
           if (text.length > 50) {
-            return text.length > 1000 ? text.substring(0, 1000) + '...' : text;
+            const finalText = text.length > 1000 ? text.substring(0, 1000) + '...' : text;
+            console.log(`Tracktern: Found ${fieldName}:`, finalText.substring(0, 100) + '...');
+            return finalText;
           }
         }
       }
+      console.log(`Tracktern: No ${fieldName} found`);
       return '';
     };
 
-    return {
-      title: getTextFromSelectors(selectors.title),
-      company: getTextFromSelectors(selectors.company),
-      description: getLongTextFromSelectors(selectors.description),
+    let result = {
+      title: getTextFromSelectors(selectors.title, 'title'),
+      company: getTextFromSelectors(selectors.company, 'company'),
+      description: getLongTextFromSelectors(selectors.description, 'description'),
       scrapedAt: new Date().toISOString()
     };
+
+    // Fallback: if nothing found, try generic approach
+    if (!result.title && !result.company && !result.description) {
+      console.log('Tracktern: No data found with selectors, trying fallback...');
+      
+      // Try to find the largest heading as title
+      const headings = document.querySelectorAll('h1, h2, h3');
+      for (const heading of headings) {
+        const text = heading.innerText?.trim();
+        if (text && text.length > 5 && text.length < 200) {
+          result.title = text;
+          console.log('Tracktern: Found title via fallback:', text);
+          break;
+        }
+      }
+      
+      // Try to find company in page title or meta
+      const pageTitle = document.title;
+      if (pageTitle) {
+        const companyMatch = pageTitle.match(/at\s+([^|]+)/i) || pageTitle.match(/\|\s*([^|]+)$/);
+        if (companyMatch) {
+          result.company = companyMatch[1].trim();
+          console.log('Tracktern: Found company via page title:', result.company);
+        }
+      }
+    }
+
+    console.log('Tracktern: Final extraction result:', result);
+    return result;
   }
 
   showJobForm(jobData = {}) {
