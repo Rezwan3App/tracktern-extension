@@ -670,7 +670,7 @@ class TrackternJobSaver {
         
         <form id="job-form">
           <div class="field">
-            <label>Job Title</label>
+            <label>TrackTern</label>
             <input type="text" id="job-title" value="${jobData.title || ''}" placeholder="Enter job title">
           </div>
           
@@ -690,7 +690,7 @@ class TrackternJobSaver {
           </div>
           
           <button type="button" id="save-job" class="primary-btn">
-            Save to Airtable
+            Save Job
           </button>
         </form>
         
@@ -851,7 +851,7 @@ class TrackternJobSaver {
               <strong>Recommended Columns</strong>
               <p>Add these columns to your table:</p>
               <ul>
-                <li><strong>Job Title</strong> (Single line text)</li>
+                <li><strong>TrackTern</strong> (Single line text)</li>
                 <li><strong>Company</strong> (Single line text)</li>
                 <li><strong>Description</strong> (Long text)</li>
                 <li><strong>URL</strong> (URL)</li>
@@ -1278,7 +1278,7 @@ class TrackternJobSaver {
 
   async saveJob() {
     const jobData = {
-      'Job Title': document.getElementById('job-title')?.value.trim(),
+      'TrackTern': document.getElementById('job-title')?.value.trim(),
       'Company': document.getElementById('company')?.value.trim(), 
       'Description': document.getElementById('description')?.value.trim(),
       'URL': document.getElementById('job-url')?.value.trim(),
@@ -1286,7 +1286,7 @@ class TrackternJobSaver {
       'Status': 'To Apply'
     };
 
-    if (!jobData['Job Title'] && !jobData['Company']) {
+    if (!jobData['TrackTern'] && !jobData['Company']) {
       this.showStatus('Please enter at least a job title or company', 'error');
       return;
     }
@@ -1374,7 +1374,7 @@ class TrackternJobSaver {
           
           <div class="actions">
             <button id="add-current-job" class="primary-btn">
-              ➕ Add Current Job
+              ➕ Add New Job
             </button>
             <button id="refresh-list" class="secondary-btn">
               ↻ Refresh
@@ -1385,12 +1385,12 @@ class TrackternJobSaver {
             ${jobs.length === 0 ? `
               <div class="empty-state">
                 <p>🎯 No jobs saved yet!</p>
-                <p>Click "Add Current Job" to start tracking your applications.</p>
+                <p>Click "Add New Job" to start tracking your applications.</p>
               </div>
             ` : jobs.map(job => `
               <div class="job-item" data-job-id="${job.id}">
                 <div class="job-header">
-                  <div class="job-title">${job.fields['Job Title'] || 'Untitled'}</div>
+                  <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
                   <select class="status-select" data-job-id="${job.id}">
                     ${['To Apply','Applied','Interview','Rejected','Offer'].map(s=>`<option value="${s}" ${s=== (job.fields['Status']||'To Apply') ? 'selected':''}>${s}</option>`).join('')}
                   </select>
@@ -1468,9 +1468,9 @@ class TrackternJobSaver {
   }
 
   async exportToCSV(jobs) {
-    const headers = ['Job Title', 'Company', 'Status', 'Date Added', 'URL'];
+    const headers = ['TrackTern', 'Company', 'Status', 'Date Added', 'URL'];
     const rows = jobs.map(job => [
-      job.fields['Job Title'] || '',
+      job.fields['TrackTern'] || '',
       job.fields['Company'] || '',
       job.fields['Status'] || '',
       job.fields['Date Added'] || '',

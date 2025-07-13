@@ -1,4 +1,4 @@
-# Tracktern Job Saver Extension
+# TrackTern Extension
 
 A Chrome extension that automatically extracts job information from job posting websites and saves it to your preferred storage method.
 
