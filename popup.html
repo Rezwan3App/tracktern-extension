@@ -98,22 +98,26 @@
         width: 100%;
         padding: 10px 12px;
         border: 1px solid #e2e8f0;
-        border-radius: 6px;
+        border-radius: 8px;
         font-size: 14px;
         transition: border-color 0.2s ease;
         background: white;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
       }
       
       .field input:focus,
       .field textarea:focus {
         outline: none;
         border-color: #3182ce;
-        box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.1);
+        box-shadow: 0 0 0 2px rgba(49, 130, 206, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
       }
       
       .field textarea {
-        min-height: 80px;
+        min-height: 100px;
         resize: vertical;
+        font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+        line-height: 1.5;
+        overflow-y: auto;
       }
       
       /* Button Styles */
@@ -189,7 +193,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
+        margin-bottom: 8px;
       }
       
       .job-count {
@@ -198,30 +202,31 @@
       }
       
       .storage-type {
-        font-size: 12px;
+        font-size: 10px;
         opacity: 0.9;
-        padding: 4px 12px;
+        padding: 2px 8px;
         background: rgba(255,255,255,0.2);
-        border-radius: 20px;
+        border-radius: 12px;
       }
       
       .status-counters {
         display: flex;
-        gap: 8px;
+        gap: 4px;
         flex-wrap: wrap;
       }
       
       .chip {
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-size: 11px;
+        padding: 3px 6px;
+        border-radius: 10px;
+        font-size: 10px;
         font-weight: 500;
-        background: rgba(255,255,255,0.2);
+        background: rgba(255,255,255,0.15);
         color: white;
+        border: 1px solid rgba(255,255,255,0.2);
       }
       
       .actions {
-        padding: 16px;
+        padding: 12px 16px;
         display: flex;
         gap: 10px;
       }
@@ -232,18 +237,19 @@
       
       /* Job Item Styles */
       .job-list {
-        padding: 0 16px 16px;
+        padding: 0 16px 12px;
         max-height: 300px;
         overflow-y: auto;
       }
       
       .job-item {
         background: #f7fafc;
-        border-radius: 6px;
-        padding: 12px;
-        margin-bottom: 8px;
+        border-radius: 10px;
+        padding: 10px;
+        margin-bottom: 6px;
         border: 1px solid #e2e8f0;
         transition: border-color 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
       }
       
       .job-item:hover {
@@ -254,7 +260,7 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       
       .job-title {
@@ -270,14 +276,14 @@
         font-size: 14px;
         color: #3182ce;
         font-weight: 500;
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       }
       
       .job-status-row {
         display: flex;
         align-items: center;
         gap: 10px;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
       }
       
       .status-select {
@@ -331,7 +337,7 @@
       
       /* Footer */
       .footer {
-        padding: 16px;
+        padding: 12px 16px;
         border-top: 1px solid #e2e8f0;
         background: #f7fafc;
         display: flex;
@@ -341,7 +347,7 @@
       .footer .btn {
         flex: 1;
         font-size: 13px;
-        padding: 8px 12px;
+        padding: 6px 10px;
       }
       
       /* Status Messages */

@@ -658,7 +658,6 @@ class TrackternJobSaver {
       <div class="container">
         <div class="header">
           <h3>TrackTern Version 1.0</h3>
-          <div class="subtitle">${jobData.domain || 'Current page'}</div>
         </div>
         
         <div class="job-form">
@@ -671,7 +670,7 @@ class TrackternJobSaver {
           
           <form id="job-form">
             <div class="field">
-              <label>TrackTern</label>
+              <label>Job Title</label>
               <input type="text" id="job-title" value="${jobData.title || ''}" placeholder="Enter job title">
             </div>
             
@@ -698,7 +697,7 @@ class TrackternJobSaver {
           <div id="status" class="status"></div>
           
           <div class="footer">
-            <button id="rescrape" class="btn btn-secondary">↻ Re-scan page</button>
+            <button id="rescrape" class="btn btn-secondary">↻ Re-scan</button>
           </div>
         </div>
       </div>
