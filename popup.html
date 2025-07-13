@@ -36,6 +36,50 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
+      
+      /* Job List Layout Improvements */
+      .job-status-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      
+      .status-select {
+        flex: 1;
+        padding: 4px 8px;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        font-size: 12px;
+        background: white;
+      }
+      
+      .job-date {
+        font-size: 11px;
+        color: #718096;
+        white-space: nowrap;
+      }
+      
+      .status-counters {
+        display: flex;
+        gap: 4px;
+        margin-top: 4px;
+      }
+      
+      .chip {
+        padding: 2px 6px;
+        border-radius: 12px;
+        font-size: 10px;
+        font-weight: 500;
+        min-width: 16px;
+        text-align: center;
+      }
+      
+      .chip-to-apply { background: #e6fffa; color: #234e52; }
+      .chip-applied { background: #fef5e7; color: #744210; }
+      .chip-interview { background: #e6f3ff; color: #2a4365; }
+      .chip-rejected { background: #fed7d7; color: #742a2a; }
+      .chip-offer { background: #f0fff4; color: #22543d; }
     </style>
   </head>
   <body>

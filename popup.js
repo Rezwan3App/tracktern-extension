@@ -657,7 +657,7 @@ class TrackternJobSaver {
     document.body.innerHTML = `
       <div class="job-form">
         <div class="header">
-          <h3>💼 Job Details</h3>
+          <h3>TrackTern Version 1.0</h3>
           <div class="domain">${jobData.domain || 'Current page'}</div>
         </div>
         
@@ -1366,7 +1366,7 @@ class TrackternJobSaver {
             <div class="storage-info">
               <div class="job-count">${jobCount} job${jobCount !== 1 ? 's' : ''} saved</div>
               <div class="status-counters">
-                ${statuses.map(s=>`<span class="chip chip-${s.toLowerCase().replace(/\s/g,'-')}">${counts[s]} ${s}</span>`).join('')}
+                ${statuses.map(s=>`<span class="chip chip-${s.toLowerCase().replace(/\s/g,'-')}">${counts[s]}</span>`).join('')}
               </div>
               <div class="storage-type">${this.config?.storageType === 'local' ? '💾 Local' : '☁️ Airtable'}</div>
             </div>
@@ -1391,13 +1391,15 @@ class TrackternJobSaver {
               <div class="job-item" data-job-id="${job.id}">
                 <div class="job-header">
                   <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
-                  <select class="status-select" data-job-id="${job.id}">
-                    ${['To Apply','Applied','Interview','Rejected','Offer'].map(s=>`<option value="${s}" ${s=== (job.fields['Status']||'To Apply') ? 'selected':''}>${s}</option>`).join('')}
-                  </select>
                   <button class="delete-job" data-job-id="${job.id}">🗑️</button>
                 </div>
                 <div class="job-company">${job.fields['Company'] || 'Unknown Company'}</div>
-                <div class="job-date">${job.fields['Date Added'] ? new Date(job.fields['Date Added']).toLocaleDateString() : 'No date'}</div>
+                <div class="job-status-row">
+                  <select class="status-select" data-job-id="${job.id}">
+                    ${['To Apply','Applied','Interview','Rejected','Offer'].map(s=>`<option value="${s}" ${s=== (job.fields['Status']||'To Apply') ? 'selected':''}>${s}</option>`).join('')}
+                  </select>
+                  <div class="job-date">${job.fields['Date Added'] ? new Date(job.fields['Date Added']).toLocaleDateString() : 'No date'}</div>
+                </div>
                 ${job.fields['URL'] ? `<a href="${job.fields['URL']}" target="_blank" class="job-link">🔗 View Job</a>` : ''}
               </div>
             `).join('')}
