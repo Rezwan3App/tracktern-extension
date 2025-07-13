@@ -1392,7 +1392,7 @@ class TrackternJobSaver {
               <div class="job-item" data-job-id="${job.id}">
                 <div class="job-header">
                   <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
-                  <button class="btn btn-danger delete-job" data-job-id="${job.id}">🗑️</button>
+                  <button class="btn btn-danger delete-job" data-job-id="${job.id}">×</button>
                 </div>
                 <div class="job-company">${job.fields['Company'] || 'Unknown Company'}</div>
                 <div class="job-status-row">
