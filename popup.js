@@ -655,49 +655,51 @@ class TrackternJobSaver {
     const hasData = jobData.title || jobData.company || jobData.description;
     
     document.body.innerHTML = `
-      <div class="job-form">
+      <div class="container">
         <div class="header">
           <h3>TrackTern Version 1.0</h3>
-          <div class="domain">${jobData.domain || 'Current page'}</div>
+          <div class="subtitle">${jobData.domain || 'Current page'}</div>
         </div>
         
-        ${!hasData ? `
-          <div class="no-data-notice">
-            <p>⚠️ Couldn't auto-detect job information on this page.</p>
-            <p>You can manually enter the details below.</p>
-          </div>
-        ` : ''}
-        
-        <form id="job-form">
-          <div class="field">
-            <label>TrackTern</label>
-            <input type="text" id="job-title" value="${jobData.title || ''}" placeholder="Enter job title">
-          </div>
+        <div class="job-form">
+          ${!hasData ? `
+            <div class="status info">
+              <p>⚠️ Couldn't auto-detect job information on this page.</p>
+              <p>You can manually enter the details below.</p>
+            </div>
+          ` : ''}
           
-          <div class="field">
-            <label>Company</label>
-            <input type="text" id="company" value="${jobData.company || ''}" placeholder="Enter company name">
-          </div>
+          <form id="job-form">
+            <div class="field">
+              <label>TrackTern</label>
+              <input type="text" id="job-title" value="${jobData.title || ''}" placeholder="Enter job title">
+            </div>
+            
+            <div class="field">
+              <label>Company</label>
+              <input type="text" id="company" value="${jobData.company || ''}" placeholder="Enter company name">
+            </div>
+            
+            <div class="field">
+              <label>Description</label>
+              <textarea id="description" placeholder="Enter job description">${jobData.description || ''}</textarea>
+            </div>
+            
+            <div class="field">
+              <label>URL</label>
+              <input type="url" id="job-url" value="${jobData.url || ''}" placeholder="Job URL">
+            </div>
+            
+            <button type="button" id="save-job" class="btn btn-primary">
+              💾 Save Job
+            </button>
+          </form>
           
-          <div class="field">
-            <label>Description</label>
-            <textarea id="description" placeholder="Enter job description">${jobData.description || ''}</textarea>
-          </div>
+          <div id="status" class="status"></div>
           
-          <div class="field">
-            <label>URL</label>
-            <input type="url" id="job-url" value="${jobData.url || ''}" placeholder="Job URL">
+          <div class="footer">
+            <button id="rescrape" class="btn btn-secondary">↻ Re-scan page</button>
           </div>
-          
-          <button type="button" id="save-job" class="primary-btn">
-            Save Job
-          </button>
-        </form>
-        
-        <div id="status" class="status"></div>
-        
-        <div class="footer">
-          <button id="rescrape" class="secondary-btn">↻ Re-scan page</button>
         </div>
       </div>
     `;
@@ -1361,22 +1363,21 @@ class TrackternJobSaver {
       
       document.body.innerHTML = `
         <div class="job-list-screen">
-                                      <div class="header">
-            <h3>TrackTern</h3>
-            <div class="storage-info">
+          <div class="job-list-header">
+            <div class="job-stats">
               <div class="job-count">${jobCount} job${jobCount !== 1 ? 's' : ''} saved</div>
-              <div class="status-counters">
-                ${statuses.map(s=>`<span class="chip chip-${s.toLowerCase().replace(/\s/g,'-')}">${counts[s]} ${s}</span>`).join('')}
-              </div>
               <div class="storage-type">${this.config?.storageType === 'local' ? '💾 Local' : '☁️ Airtable'}</div>
+            </div>
+            <div class="status-counters">
+              ${statuses.map(s=>`<span class="chip">${counts[s]} ${s}</span>`).join('')}
             </div>
           </div>
           
           <div class="actions">
-            <button id="add-current-job" class="primary-btn">
+            <button id="add-current-job" class="btn btn-primary">
               ➕ Add New Job
             </button>
-            <button id="refresh-list" class="secondary-btn">
+            <button id="refresh-list" class="btn btn-secondary">
               ↻ Refresh
             </button>
           </div>
@@ -1391,7 +1392,7 @@ class TrackternJobSaver {
               <div class="job-item" data-job-id="${job.id}">
                 <div class="job-header">
                   <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
-                  <button class="delete-job" data-job-id="${job.id}">🗑️</button>
+                  <button class="btn btn-danger delete-job" data-job-id="${job.id}">🗑️</button>
                 </div>
                 <div class="job-company">${job.fields['Company'] || 'Unknown Company'}</div>
                 <div class="job-status-row">
@@ -1408,8 +1409,8 @@ class TrackternJobSaver {
           <div id="status" class="status"></div>
           
           <div class="footer">
-            <button id="export-csv" class="secondary-btn">📊 Export CSV</button>
-            <button id="settings" class="secondary-btn">⚙️ Settings</button>
+            <button id="export-csv" class="btn btn-secondary">📊 Export CSV</button>
+            <button id="settings" class="btn btn-secondary">⚙️ Settings</button>
           </div>
         </div>
       `;
