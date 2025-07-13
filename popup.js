@@ -1278,6 +1278,7 @@ class TrackternJobSaver {
   }
 
   async saveJob() {
+    // Get and trim all input values
     const jobData = {
       'TrackTern': document.getElementById('job-title')?.value.trim(),
       'Company': document.getElementById('company')?.value.trim(), 
@@ -1287,12 +1288,41 @@ class TrackternJobSaver {
       'Status': 'To Apply'
     };
 
-    if (!jobData['TrackTern'] && !jobData['Company']) {
-      this.showStatus('Please enter at least a job title or company', 'error');
+    // Input validation
+    if (!jobData['TrackTern']) {
+      this.showStatus('Please enter a job title', 'error');
       return;
     }
 
-    // Check storage type
+    if (!jobData['Company']) {
+      this.showStatus('Please enter a company name', 'error');
+      return;
+    }
+
+    if (!jobData['Description']) {
+      this.showStatus('Please enter a job description', 'error');
+      return;
+    }
+
+    if (!jobData['URL']) {
+      this.showStatus('Please enter a job URL', 'error');
+      return;
+    }
+
+    // Check for duplicate URL
+    try {
+      const existingJobs = await this.getLocalJobs();
+      const isDuplicate = existingJobs.some(job => job.fields['URL'] === jobData['URL']);
+      
+      if (isDuplicate) {
+        this.showStatus('Job already saved!', 'error');
+        return;
+      }
+    } catch (error) {
+      console.error('Error checking for duplicates:', error);
+    }
+
+    // Check storage type and save
     if (this.config?.storageType === 'local') {
       await this.saveJobLocally(jobData);
     } else {
@@ -1320,7 +1350,7 @@ class TrackternJobSaver {
       // Save back to storage
       await chrome.storage.local.set({ savedJobs });
       
-      this.showStatus('✅ Job saved locally!', 'success');
+      this.showStatus('✅ Job saved successfully!', 'success');
       
       setTimeout(() => {
         this.showJobList();
@@ -1337,7 +1367,7 @@ class TrackternJobSaver {
 
     try {
       await this.createRecord(jobData);
-      this.showStatus('✅ Job saved to Airtable!', 'success');
+      this.showStatus('✅ Job saved successfully!', 'success');
       
       setTimeout(() => {
         this.showJobList();
@@ -1384,8 +1414,7 @@ class TrackternJobSaver {
           <div class="job-list">
             ${jobs.length === 0 ? `
               <div class="empty-state">
-                <p>🎯 No jobs saved yet!</p>
-                <p>Click "Add New Job" to start tracking your applications.</p>
+                <p>No jobs saved yet. Start by adding your first!</p>
               </div>
             ` : jobs.map(job => `
               <div class="job-item" data-job-id="${job.id}">
@@ -1633,7 +1662,7 @@ class TrackternJobSaver {
        const result = await chrome.storage.local.get(['savedJobs']);
        const jobs = (result.savedJobs || []).filter(j => j.id !== jobId);
        await chrome.storage.local.set({ savedJobs: jobs });
-       this.showStatus('Deleted!', 'success');
+       this.showStatus('🗑️ Job deleted', 'success');
        this.showJobList();
     }
   }
