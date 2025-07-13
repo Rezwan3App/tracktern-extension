@@ -1362,11 +1362,11 @@ class TrackternJobSaver {
       document.body.innerHTML = `
         <div class="job-list-screen">
                                       <div class="header">
-            <h3>💼 Tracktern</h3>
+            <h3>TrackTern</h3>
             <div class="storage-info">
               <div class="job-count">${jobCount} job${jobCount !== 1 ? 's' : ''} saved</div>
               <div class="status-counters">
-                ${statuses.map(s=>`<span class="chip chip-${s.toLowerCase().replace(/\s/g,'-')}">${counts[s]}</span>`).join('')}
+                ${statuses.map(s=>`<span class="chip chip-${s.toLowerCase().replace(/\s/g,'-')}">${counts[s]} ${s}</span>`).join('')}
               </div>
               <div class="storage-type">${this.config?.storageType === 'local' ? '💾 Local' : '☁️ Airtable'}</div>
             </div>
