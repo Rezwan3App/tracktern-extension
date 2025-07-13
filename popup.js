@@ -689,9 +689,14 @@ class TrackternJobSaver {
               <input type="url" id="job-url" value="${jobData.url || ''}" placeholder="Job URL">
             </div>
             
-            <button type="button" id="save-job" class="btn btn-primary">
-              💾 Save Job
-            </button>
+            <div class="button-group">
+              <button type="button" id="save-job" class="btn btn-primary">
+                💾 Save Job
+              </button>
+              <button type="button" id="show-list" class="btn btn-secondary">
+                📋 Show List
+              </button>
+            </div>
           </form>
           
           <div id="status" class="status"></div>
@@ -705,6 +710,7 @@ class TrackternJobSaver {
     
     // Set up event listeners
     document.getElementById('save-job')?.addEventListener('click', () => this.handleSaveToAirtable());
+    document.getElementById('show-list')?.addEventListener('click', () => this.showJobList());
     document.getElementById('rescrape')?.addEventListener('click', () => this.loadJobAndShowForm());
   }
 
@@ -1315,8 +1321,10 @@ class TrackternJobSaver {
       const isDuplicate = existingJobs.some(job => job.fields['URL'] === jobData['URL']);
       
       if (isDuplicate) {
-        this.showStatus('Job already saved!', 'error');
-        return;
+        const confirmed = confirm('This job has already been saved. Are you sure you want to save it again?');
+        if (!confirmed) {
+          return;
+        }
       }
     } catch (error) {
       console.error('Error checking for duplicates:', error);
