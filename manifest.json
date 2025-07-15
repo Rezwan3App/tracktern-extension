@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TrackTern",
   "version": "2.0",
-  "description": "Save job listings to Airtable with seamless setup and smart extraction.",
+  "description": "Save job listings locally with seamless setup and smart extraction.",
   "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "host_permissions": ["https://api.airtable.com/*", "https://airtable.com/*"],
   "action": {
