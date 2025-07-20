@@ -6,4 +6,4 @@ All job listings you save using the extension are stored locally in your own bro
 
 We do not access or use any identifying information, browsing history, or device data.
 
-If you have any questions, contact us at [your email or GitHub].
+If you have any questions, contact us at rezwan99@gmail.com
