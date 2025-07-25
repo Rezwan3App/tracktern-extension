@@ -3,8 +3,8 @@
   "name": "TrackTern",
   "version": "2.0.1",
   "description": "Save job listings locally with seamless setup and smart extraction.",
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
-  "host_permissions": ["https://api.airtable.com/*", "https://airtable.com/*"],
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": [],
   "action": {
     "default_popup": "popup.html",
     "default_title": "TrackTern"
