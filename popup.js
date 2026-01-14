@@ -87,6 +87,24 @@ class TrackternJobSaver {
           ]
         };
 
+        const extractSalaryText = () => {
+          const text = document.body?.innerText || '';
+          if (!text) return '';
+          const patterns = [
+            /\$\s?\d{2,3}\s?k\s*(?:-\s*\$\s?\d{2,3}\s?k)?/i,
+            /\$\s?\d{1,3}(?:,\d{3})+\s*(?:-\s*\$\s?\d{1,3}(?:,\d{3})+)?/i,
+            /\$\s?\d+(?:\.\d+)?\s*\/\s*hr/i,
+            /\$\s?\d+(?:\.\d+)?\s*\/\s*hour/i
+          ];
+          for (const pattern of patterns) {
+            const match = text.match(pattern);
+            if (match) {
+              return match[0].replace(/\s+/g, ' ').trim();
+            }
+          }
+          return '';
+        };
+
         const isLikelyCompanyText = (text, el) => {
           if (!text) return false;
           const normalized = text.trim();
@@ -253,7 +271,8 @@ class TrackternJobSaver {
         let result = {
           title: getTextFromSelectors(selectors.title, 'title'),
           company: structuredCompany || getTextFromSelectors(selectors.company, 'company'),
-          description: getDescriptionText(selectors.description)
+          description: getDescriptionText(selectors.description),
+          salary: extractSalaryText()
         };
 
         if (!result.title) {
@@ -355,6 +374,11 @@ class TrackternJobSaver {
               <input type="url" id="job-url" value="${jobData.url || ''}" placeholder="Job URL">
             </div>
 
+            <div class="field">
+              <label>Salary</label>
+              <input type="text" id="salary" value="${jobData.salary || ''}" placeholder="e.g., $120k - $140k">
+            </div>
+
           <div class="button-group">
             <button type="button" id="save-job" class="btn btn-primary">
               Save Job
@@ -386,6 +410,7 @@ class TrackternJobSaver {
       'Company': document.getElementById('company')?.value.trim(),
       'Description': document.getElementById('description')?.value.trim(),
       'URL': document.getElementById('job-url')?.value.trim(),
+      'Salary': document.getElementById('salary')?.value.trim(),
       'Date Added': new Date().toISOString().split('T')[0],
       'Status': 'Applied'
     };
@@ -460,7 +485,7 @@ class TrackternJobSaver {
     try {
       const jobs = await this.getLocalJobs();
       const jobCount = jobs.length;
-      const statuses = ['Applied', 'Interview', 'Rejected', 'Offer'];
+      const statuses = ['Applied', 'Interview', 'Rejected'];
       const counts = {};
       statuses.forEach(s => (counts[s] = 0));
       jobs.forEach(j => {
@@ -513,6 +538,7 @@ class TrackternJobSaver {
                 </div>
                 <div class="job-status-row">
                   <span class="status-badge">${job.fields['Status'] || 'Applied'}</span>
+                  ${job.fields['Salary'] ? `<span class="salary-badge">💵 ${job.fields['Salary']}</span>` : ''}
                 </div>
                 <button class="btn btn-icon delete-job" data-job-id="${job.id}" aria-label="Delete job">×</button>
               </div>
@@ -889,6 +915,16 @@ const styles = `
   .status-badge {
     background: #eff6ff;
     color: #2563eb;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    display: inline-block;
+    font-weight: 600;
+  }
+
+  .salary-badge {
+    background: #ecfdf3;
+    color: #047857;
     font-size: 11px;
     padding: 4px 8px;
     border-radius: 12px;
