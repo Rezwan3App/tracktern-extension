@@ -515,9 +515,27 @@ class TrackternJobSaver {
         if (counts[st] !== undefined) counts[st]++;
       });
       const currentFilter = this.currentStatusFilter || 'All';
-      const filteredJobs = currentFilter === 'All'
-        ? jobs
-        : jobs.filter(job => (job.fields['Status'] || 'Applied') === currentFilter);
+      const currentTypeFilter = this.currentTypeFilter || 'Fulltime';
+      const searchQuery = (this.currentSearchQuery || '').trim().toLowerCase();
+      const filteredJobs = jobs.filter(job => {
+        const statusMatch = currentFilter === 'All'
+          ? true
+          : (job.fields['Status'] || 'Applied') === currentFilter;
+        const type = this.classifyJobType(job);
+        const typeMatch = currentTypeFilter ? type === currentTypeFilter : true;
+        const haystack = [
+          job.fields['TrackTern'],
+          job.fields['Company'],
+          job.fields['Description'],
+          job.fields['Salary'],
+          job.fields['Location']
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        const searchMatch = !searchQuery || haystack.includes(searchQuery);
+        return statusMatch && typeMatch && searchMatch;
+      });
 
       document.body.innerHTML = `
         <div class="dashboard">
@@ -536,6 +554,16 @@ class TrackternJobSaver {
             Add New Job
           </button>
 
+          <div class="search-row">
+            <input
+              type="text"
+              id="job-search"
+              class="search-input"
+              placeholder="Search companies or keywords"
+              value="${this.escapeHtml(this.currentSearchQuery || '')}"
+            />
+          </div>
+
           <section class="status-strip">
             ${['All', ...statuses].map((s, idx) => `
               <button class="status-pill ${s === currentFilter ? 'active' : ''}" type="button" data-status="${s}">
@@ -544,19 +572,30 @@ class TrackternJobSaver {
             `).join('')}
           </section>
 
+          <section class="type-strip">
+            ${['Internship', 'Fulltime'].map(type => `
+              <button class="status-pill ${type === currentTypeFilter ? 'active' : ''}" type="button" data-type="${type}">
+                ${type}
+              </button>
+            `).join('')}
+          </section>
+
           <section class="job-list">
             ${filteredJobs.length === 0 ? `
               <div class="empty-state">
-                <p>No jobs found for this status.</p>
+                <p>No jobs found.</p>
               </div>
             ` : filteredJobs.map(job => `
+              ${(() => {
+                const type = this.classifyJobType(job);
+                return `
               <div class="job-card" data-job-id="${job.id}" data-job-url="${job.fields['URL'] || ''}">
                 <div class="job-row">
                   <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
                   <div class="job-date">${this.formatRelativeDate(job.fields['Date Added'])}</div>
                 </div>
                 <div class="job-company">
-                  ${job.fields['Company'] || 'Unknown Company'} • ${job.fields['Location'] || 'Job Board'}
+                  ${job.fields['Company'] || 'Unknown Company'} • ${type}
                 </div>
                 <div class="job-status-row">
                   <span class="status-badge">${job.fields['Status'] || 'Applied'}</span>
@@ -564,6 +603,8 @@ class TrackternJobSaver {
                 </div>
                 <button class="btn btn-icon delete-job" data-job-id="${job.id}" aria-label="Delete job">×</button>
               </div>
+                `;
+              })()}
             `).join('')}
           </section>
 
@@ -576,10 +617,20 @@ class TrackternJobSaver {
       document.getElementById('settings')?.addEventListener('click', () => this.showSettings());
       document.querySelectorAll('.status-pill').forEach(pill => {
         pill.addEventListener('click', e => {
-          const status = e.currentTarget.getAttribute('data-status') || 'All';
-          this.currentStatusFilter = status;
+          const status = e.currentTarget.getAttribute('data-status');
+          const type = e.currentTarget.getAttribute('data-type');
+          if (status) {
+            this.currentStatusFilter = status;
+          }
+          if (type) {
+            this.currentTypeFilter = type;
+          }
           this.showJobList();
         });
+      });
+      document.getElementById('job-search')?.addEventListener('input', e => {
+        this.currentSearchQuery = e.currentTarget.value;
+        this.showJobList();
       });
       document.querySelectorAll('.delete-job').forEach(btn =>
         btn.addEventListener('click', e => {
@@ -612,6 +663,26 @@ class TrackternJobSaver {
       console.error('Error getting local jobs:', error);
       return [];
     }
+  }
+
+  classifyJobType(job) {
+    const text = `${job.fields['TrackTern'] || ''} ${job.fields['Description'] || ''}`.toLowerCase();
+    if (/(internship|intern\b|co-?op|placement)/i.test(text)) {
+      return 'Internship';
+    }
+    if (/(full[-\s]?time|permanent)/i.test(text)) {
+      return 'Fulltime';
+    }
+    return 'Fulltime';
+  }
+
+  escapeHtml(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   formatRelativeDate(dateString) {
@@ -867,6 +938,35 @@ const styles = `
     background: var(--primary);
     border-color: var(--primary);
     color: #ffffff;
+  }
+
+  .type-strip {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+    margin-bottom: 6px;
+  }
+
+  .search-row {
+    padding: 0 16px 6px;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: #ffffff;
+  }
+
+  .search-input:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
   }
 
   .list-spacer {
