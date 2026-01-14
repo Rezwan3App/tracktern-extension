@@ -1,4 +1,4 @@
-# TrackTern Extension
+# TrackFlow Extension
 
 A Chrome extension that extracts job information from job posting websites and saves it locally in your browser.
 
@@ -7,11 +7,11 @@ A Chrome extension that extracts job information from job posting websites and s
 - Local-only storage (no external services)
 - Job list dashboard with status tracking
 - CSV export
-- Works on most job sites (LinkedIn is not supported)
+- Works on most job sites
 
 ## Quick Setup
 1. Install the extension
-2. Open any job posting (except LinkedIn)
+2. Open any job posting
 3. Click the extension icon and save the job
 
 ## Installation
@@ -40,7 +40,6 @@ tracktern-extension/
 ```
 
 ## Notes
-- LinkedIn is intentionally blocked.
 - Data lives only in your browser unless you export CSV.
 
 ## License

@@ -87,12 +87,57 @@ class TrackternJobSaver {
           ]
         };
 
-        const getTextFromSelectors = (selectorList) => {
+        const isLikelyCompanyText = (text, el) => {
+          if (!text) return false;
+          const normalized = text.trim();
+          if (normalized.length < 2 || normalized.length > 200) return false;
+          if (el?.closest('footer, nav, header')) return false;
+          if (el?.closest('[class*="share"], [class*="social"], [aria-label*="share"], [aria-label*="follow"]')) {
+            return false;
+          }
+          const href = el?.getAttribute?.('href') || '';
+          if (href.startsWith('mailto:') || href.startsWith('tel:')) return false;
+          return true;
+        };
+
+        const getCompanyFromStructuredData = () => {
+          const scripts = document.querySelectorAll('script[type="application/ld+json"]');
+          for (const script of scripts) {
+            try {
+              const data = JSON.parse(script.textContent || '');
+              const items = Array.isArray(data) ? data : [data];
+              for (const item of items) {
+                const postings = item['@type'] === 'JobPosting' ? [item] : item['@graph'];
+                if (!postings) continue;
+                const list = Array.isArray(postings) ? postings : [postings];
+                for (const post of list) {
+                  if (post && post['@type'] === 'JobPosting') {
+                    const org = post.hiringOrganization || post.organization || post.publisher;
+                    const name = typeof org === 'string' ? org : org?.name;
+                    if (name && name.trim().length > 1) {
+                      return name.trim();
+                    }
+                  }
+                }
+              }
+            } catch (error) {
+              continue;
+            }
+          }
+          return '';
+        };
+
+        const getTextFromSelectors = (selectorList, fieldName) => {
           for (const selector of selectorList) {
             const elements = document.querySelectorAll(selector);
             for (const el of elements) {
               const text = el.innerText?.trim();
-              if (text && text.length > 2 && text.length < 300) {
+              if (!text) continue;
+              if (fieldName === 'company') {
+                if (isLikelyCompanyText(text, el)) {
+                  return text;
+                }
+              } else if (text.length > 2 && text.length < 300) {
                 return text;
               }
             }
@@ -203,9 +248,11 @@ class TrackternJobSaver {
           return '';
         };
 
+        const structuredCompany = getCompanyFromStructuredData();
+
         let result = {
-          title: getTextFromSelectors(selectors.title),
-          company: getTextFromSelectors(selectors.company),
+          title: getTextFromSelectors(selectors.title, 'title'),
+          company: structuredCompany || getTextFromSelectors(selectors.company, 'company'),
           description: getDescriptionText(selectors.description)
         };
 
@@ -272,13 +319,16 @@ class TrackternJobSaver {
     document.body.innerHTML = `
       <div class="container">
         <div class="header">
-          <h3>TrackFlow</h3>
-          <div class="subtitle">Save a job listing</div>
+          <div class="brand">
+            <img src="icons/icon32.png" alt="TrackFlow" class="brand-icon" />
+            <span class="brand-name">TrackFlow</span>
+          </div>
+          <button type="button" id="back-to-list" class="btn btn-secondary btn-small">Back</button>
         </div>
 
         <div class="job-form">
           ${!hasData ? `
-            <div class="status info">
+            <div class="status info form-notice">
               <p>Could not auto-detect job information on this page.</p>
               <p>You can manually enter the details below.</p>
             </div>
@@ -305,14 +355,14 @@ class TrackternJobSaver {
               <input type="url" id="job-url" value="${jobData.url || ''}" placeholder="Job URL">
             </div>
 
-            <div class="button-group">
-              <button type="button" id="save-job" class="btn btn-primary">
-                Save Job
-              </button>
-              <button type="button" id="show-list" class="btn btn-secondary">
-                Show List
-              </button>
-            </div>
+          <div class="button-group">
+            <button type="button" id="save-job" class="btn btn-primary">
+              Save Job
+            </button>
+            <button type="button" id="show-list" class="btn btn-secondary">
+              Show List
+            </button>
+          </div>
           </form>
 
           <div id="status" class="status"></div>
@@ -327,6 +377,7 @@ class TrackternJobSaver {
     document.getElementById('save-job')?.addEventListener('click', () => this.saveJob());
     document.getElementById('show-list')?.addEventListener('click', () => this.showJobList());
     document.getElementById('rescrape')?.addEventListener('click', () => this.loadJobAndShowForm());
+    document.getElementById('back-to-list')?.addEventListener('click', () => this.showJobList());
   }
 
   async saveJob() {
@@ -416,6 +467,10 @@ class TrackternJobSaver {
         const st = j.fields['Status'] || 'Applied';
         if (counts[st] !== undefined) counts[st]++;
       });
+      const currentFilter = this.currentStatusFilter || 'All';
+      const filteredJobs = currentFilter === 'All'
+        ? jobs
+        : jobs.filter(job => (job.fields['Status'] || 'Applied') === currentFilter);
 
       document.body.innerHTML = `
         <div class="dashboard">
@@ -436,18 +491,18 @@ class TrackternJobSaver {
 
           <section class="status-strip">
             ${['All', ...statuses].map((s, idx) => `
-              <button class="status-pill ${idx === 0 ? 'active' : ''}" type="button">
+              <button class="status-pill ${s === currentFilter ? 'active' : ''}" type="button" data-status="${s}">
                 ${s}${s === 'All' ? `: ${jobCount}` : `: ${counts[s]}`}
               </button>
             `).join('')}
           </section>
 
           <section class="job-list">
-            ${jobs.length === 0 ? `
+            ${filteredJobs.length === 0 ? `
               <div class="empty-state">
-                <p>No jobs saved yet. Start by adding your first!</p>
+                <p>No jobs found for this status.</p>
               </div>
-            ` : jobs.map(job => `
+            ` : filteredJobs.map(job => `
               <div class="job-card" data-job-id="${job.id}" data-job-url="${job.fields['URL'] || ''}">
                 <div class="job-row">
                   <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
@@ -471,6 +526,13 @@ class TrackternJobSaver {
       document.getElementById('add-current-job')?.addEventListener('click', () => this.loadJobAndShowForm());
       document.getElementById('export-csv')?.addEventListener('click', () => this.exportToCSV(jobs));
       document.getElementById('settings')?.addEventListener('click', () => this.showSettings());
+      document.querySelectorAll('.status-pill').forEach(pill => {
+        pill.addEventListener('click', e => {
+          const status = e.currentTarget.getAttribute('data-status') || 'All';
+          this.currentStatusFilter = status;
+          this.showJobList();
+        });
+      });
       document.querySelectorAll('.delete-job').forEach(btn =>
         btn.addEventListener('click', e => {
           e.stopPropagation();
@@ -649,7 +711,8 @@ const styles = `
 
   body {
     width: 380px;
-    height: 600px;
+    height: auto;
+    max-height: 600px;
     margin: 0;
     padding: 0 0 20px;
     font-family: 'Inter', -apple-system, sans-serif;
@@ -666,10 +729,9 @@ const styles = `
   .dashboard {
     background: var(--surface-alt);
     padding: 16px;
-    height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
   }
 
   .top-bar {
@@ -716,7 +778,7 @@ const styles = `
   }
 
   .add-job {
-    margin: 0 16px 12px;
+    margin: 0 16px 8px;
     border-radius: 6px;
     box-shadow: none;
   }
@@ -730,7 +792,7 @@ const styles = `
     gap: 8px;
     overflow-x: auto;
     padding-bottom: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
   }
 
   .status-strip::-webkit-scrollbar {
@@ -769,7 +831,7 @@ const styles = `
     gap: 12px;
     overflow-y: auto;
     padding-right: 4px;
-    flex: 1;
+    max-height: 360px;
   }
 
   .job-card {
@@ -862,6 +924,23 @@ const styles = `
     background: #1d4ed8;
   }
 
+  .btn-secondary {
+    background: #ffffff;
+    color: #374151;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-weight: 500;
+  }
+
+  .btn-secondary:hover {
+    background: #f3f4f6;
+  }
+
+  .btn-small {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
   .btn-ghost {
     background: transparent;
     color: var(--primary);
@@ -915,6 +994,10 @@ const styles = `
     text-align: center;
   }
 
+  .status:empty {
+    display: none;
+  }
+
   .status.info {
     background: #e9f2ff;
     color: #1d4ed8;
@@ -962,25 +1045,52 @@ const styles = `
     margin-top: 8px;
   }
 
+  .button-group .btn {
+    padding: 10px 14px;
+  }
+
+  .form-notice {
+    margin-bottom: 16px;
+  }
+
   .header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 15px;
+    background: #111827;
+    color: #ffffff;
+    padding: 12px 14px;
+    border-radius: 8px;
   }
 
   .header h3 {
     margin: 0;
-    color: var(--text);
+    color: #ffffff;
     font-size: 16px;
     font-weight: 700;
   }
 
   .header .subtitle {
     font-size: 12px;
-    color: var(--muted);
+    color: #cbd5f5;
+  }
+
+  .header .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header .brand-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .header .brand-name {
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
   }
 
   .settings-list {
