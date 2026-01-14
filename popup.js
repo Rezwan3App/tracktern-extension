@@ -515,27 +515,26 @@ class TrackternJobSaver {
         if (counts[st] !== undefined) counts[st]++;
       });
       const currentFilter = this.currentStatusFilter || 'All';
-      const currentTypeFilter = this.currentTypeFilter || 'Fulltime';
-      const searchQuery = (this.currentSearchQuery || '').trim().toLowerCase();
+      const currentTypeFilter = this.currentTypeFilter || 'All';
+      const currentCompanyFilter = this.currentCompanyFilter || 'All';
       const filteredJobs = jobs.filter(job => {
         const statusMatch = currentFilter === 'All'
           ? true
           : (job.fields['Status'] || 'Applied') === currentFilter;
         const type = this.classifyJobType(job);
-        const typeMatch = currentTypeFilter ? type === currentTypeFilter : true;
-        const haystack = [
-          job.fields['TrackTern'],
-          job.fields['Company'],
-          job.fields['Description'],
-          job.fields['Salary'],
-          job.fields['Location']
-        ]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase();
-        const searchMatch = !searchQuery || haystack.includes(searchQuery);
-        return statusMatch && typeMatch && searchMatch;
+        const typeMatch = currentTypeFilter === 'All' ? true : type === currentTypeFilter;
+        const companyMatch = currentCompanyFilter === 'All'
+          ? true
+          : (job.fields['Company'] || '').toLowerCase() === currentCompanyFilter.toLowerCase();
+        return statusMatch && typeMatch && companyMatch;
       });
+      const companyOptions = Array.from(
+        new Set(
+          jobs
+            .map(job => (job.fields['Company'] || '').trim())
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b));
 
       document.body.innerHTML = `
         <div class="dashboard">
@@ -551,18 +550,8 @@ class TrackternJobSaver {
           </header>
 
           <button id="add-current-job" class="btn btn-primary add-job">
-            Add New Job
+            Add This Job
           </button>
-
-          <div class="search-row">
-            <input
-              type="text"
-              id="job-search"
-              class="search-input"
-              placeholder="Search companies or keywords"
-              value="${this.escapeHtml(this.currentSearchQuery || '')}"
-            />
-          </div>
 
           <section class="status-strip">
             ${['All', ...statuses].map((s, idx) => `
@@ -573,11 +562,20 @@ class TrackternJobSaver {
           </section>
 
           <section class="type-strip">
-            ${['Internship', 'Fulltime'].map(type => `
+            ${['All', 'Internship', 'Fulltime'].map(type => `
               <button class="status-pill ${type === currentTypeFilter ? 'active' : ''}" type="button" data-type="${type}">
                 ${type}
               </button>
             `).join('')}
+            <label class="company-filter">
+              <span>Company</span>
+              <select id="company-filter">
+                <option value="All">All</option>
+                ${companyOptions.map(company => `
+                  <option value="${this.escapeHtml(company)}" ${company === currentCompanyFilter ? 'selected' : ''}>${this.escapeHtml(company)}</option>
+                `).join('')}
+              </select>
+            </label>
           </section>
 
           <section class="job-list">
@@ -628,8 +626,8 @@ class TrackternJobSaver {
           this.showJobList();
         });
       });
-      document.getElementById('job-search')?.addEventListener('input', e => {
-        this.currentSearchQuery = e.currentTarget.value;
+      document.getElementById('company-filter')?.addEventListener('change', e => {
+        this.currentCompanyFilter = e.currentTarget.value;
         this.showJobList();
       });
       document.querySelectorAll('.delete-job').forEach(btn =>
@@ -857,6 +855,7 @@ const styles = `
     display: flex;
     align-items: center;
     justify-content: space-between;
+    margin-bottom: 6px;
   }
 
   .brand {
@@ -897,7 +896,7 @@ const styles = `
   }
 
   .add-job {
-    margin: 0 16px 8px;
+    margin: 8px 16px 8px;
     border-radius: 6px;
     box-shadow: none;
   }
@@ -946,27 +945,25 @@ const styles = `
     overflow-x: auto;
     padding-bottom: 8px;
     margin-bottom: 6px;
+    align-items: center;
   }
 
-  .search-row {
-    padding: 0 16px 6px;
+  .company-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
   }
 
-  .search-input {
-    width: 100%;
-    padding: 8px 12px;
+  .company-filter select {
+    padding: 6px 10px;
     border-radius: 6px;
     border: 1px solid var(--border);
-    font-size: 13px;
-    font-family: inherit;
-    color: var(--text);
     background: #ffffff;
-  }
-
-  .search-input:focus {
-    outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    font-size: 12px;
+    color: var(--text);
   }
 
   .list-spacer {
