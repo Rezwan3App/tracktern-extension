@@ -336,7 +336,7 @@ class TrackternJobSaver {
       'Description': document.getElementById('description')?.value.trim(),
       'URL': document.getElementById('job-url')?.value.trim(),
       'Date Added': new Date().toISOString().split('T')[0],
-      'Status': 'To Apply'
+      'Status': 'Applied'
     };
 
     if (!jobData['TrackTern']) {
@@ -409,42 +409,36 @@ class TrackternJobSaver {
     try {
       const jobs = await this.getLocalJobs();
       const jobCount = jobs.length;
-      const statuses = ['To Apply', 'Applied', 'Interview', 'Rejected', 'Offer'];
+      const statuses = ['Applied', 'Interview', 'Rejected', 'Offer'];
       const counts = {};
       statuses.forEach(s => (counts[s] = 0));
       jobs.forEach(j => {
-        const st = j.fields['Status'] || 'To Apply';
+        const st = j.fields['Status'] || 'Applied';
         if (counts[st] !== undefined) counts[st]++;
       });
 
       document.body.innerHTML = `
         <div class="dashboard">
-          <header class="dashboard-header">
-            <div class="dashboard-title">TrackFlow 2.0 Dashboard</div>
-            <div class="dashboard-actions-top">
+          <header class="top-bar">
+            <div class="brand">
+              <img src="icons/icon32.png" alt="TrackFlow" class="brand-icon" />
+              <span class="brand-name">TrackFlow</span>
+            </div>
+            <div class="top-actions">
               <button id="export-csv" class="btn btn-icon" aria-label="Export">📥</button>
               <button id="settings" class="btn btn-icon" aria-label="Settings">⚙️</button>
             </div>
           </header>
 
-          <div class="dashboard-subtitle">your personal job vault</div>
-
-          <section class="dashboard-hero">
-            <div class="metric">
-              <div class="metric-value">${jobCount}</div>
-              <div class="metric-label">Jobs Saved</div>
-            </div>
-            <button id="add-current-job" class="btn btn-primary btn-pill btn-full">
-              Add New Job
-            </button>
-          </section>
+          <button id="add-current-job" class="btn btn-primary btn-full add-job">
+            Add New Job
+          </button>
 
           <section class="status-strip">
-            ${statuses.map(s => `
-              <div class="status-chip">
-                <span class="status-label">${s}</span>
-                <span class="status-value">${counts[s]}</span>
-              </div>
+            ${['All', ...statuses].map((s, idx) => `
+              <button class="status-pill ${idx === 0 ? 'active' : ''}" type="button">
+                ${s}${s === 'All' ? `: ${jobCount}` : `: ${counts[s]}`}
+              </button>
             `).join('')}
           </section>
 
@@ -462,11 +456,11 @@ class TrackternJobSaver {
                 <div class="job-company">${job.fields['Company'] || 'Unknown Company'}</div>
                 <div class="job-meta">
                   <div class="job-source">Job Board</div>
-                  <div class="job-date">${job.fields['Date Added'] ? new Date(job.fields['Date Added']).toLocaleDateString() : 'No date'}</div>
+                  <div class="job-date">${this.formatRelativeDate(job.fields['Date Added'])}</div>
                 </div>
                 <div class="job-status-row">
                   <select class="status-select" data-job-id="${job.id}">
-                    ${statuses.map(s => `<option value="${s}" ${s === (job.fields['Status'] || 'To Apply') ? 'selected' : ''}>${s}</option>`).join('')}
+                    ${statuses.map(s => `<option value="${s}" ${s === (job.fields['Status'] || 'Applied') ? 'selected' : ''}>${s}</option>`).join('')}
                   </select>
                   ${job.fields['URL'] ? `<a href="${job.fields['URL']}" target="_blank" class="job-link">View Job</a>` : ''}
                 </div>
@@ -511,6 +505,26 @@ class TrackternJobSaver {
       console.error('Error getting local jobs:', error);
       return [];
     }
+  }
+
+  formatRelativeDate(dateString) {
+    if (!dateString) return 'No date';
+    const parsed = new Date(dateString);
+    if (Number.isNaN(parsed.getTime())) return 'No date';
+
+    const diffMs = Date.now() - parsed.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) return 'Today';
+    if (diffDays === 1) return '1d ago';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    const diffWeeks = Math.floor(diffDays / 7);
+    if (diffWeeks === 1) return '1w ago';
+    if (diffWeeks < 5) return `${diffWeeks}w ago`;
+    const diffMonths = Math.floor(diffDays / 30);
+    if (diffMonths === 1) return '1mo ago';
+    if (diffMonths < 12) return `${diffMonths}mo ago`;
+    const diffYears = Math.floor(diffDays / 365);
+    return diffYears === 1 ? '1y ago' : `${diffYears}y ago`;
   }
 
   async exportToCSV(jobs) {
@@ -625,11 +639,11 @@ const styles = `
   :root {
     --primary: #007bff;
     --primary-dark: #0069d9;
-    --text: #1f2937;
+    --text: #111827;
     --muted: #6b7280;
     --border: #e5e7eb;
     --surface: #ffffff;
-    --surface-alt: #f8f9fa;
+    --surface-alt: #f9fafb;
     --shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
   }
 
@@ -643,7 +657,7 @@ const styles = `
     margin: 0;
     padding: 0;
     font-family: Inter, Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    background: var(--surface);
+    background: var(--surface-alt);
     color: var(--text);
     border: 2px solid #111827;
   }
@@ -653,67 +667,51 @@ const styles = `
   }
 
   .dashboard {
-    background: var(--surface);
-    padding: 20px;
+    background: var(--surface-alt);
+    padding: 16px;
   }
 
-  .dashboard-header {
+  .top-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 4px 0 8px;
+    padding-bottom: 12px;
   }
 
-  .dashboard-title {
-    font-size: 18px;
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .brand-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .brand-name {
+    font-size: 16px;
     font-weight: 700;
+    color: var(--text);
   }
 
-  .dashboard-actions-top {
+  .top-actions {
     display: flex;
     gap: 8px;
   }
 
-  .dashboard-subtitle {
-    font-size: 12px;
-    color: var(--muted);
-    margin-bottom: 16px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-weight: 600;
-  }
-
-  .dashboard-hero {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 14px;
-    margin-bottom: 16px;
-  }
-
-  .metric-value {
-    font-size: 42px;
-    font-weight: 800;
-    line-height: 1;
-    color: var(--text);
-  }
-
-  .metric-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-top: 4px;
-    text-align: center;
+  .add-job {
+    margin-bottom: 12px;
+    border-radius: 8px;
+    box-shadow: 0 8px 16px rgba(0, 123, 255, 0.2);
   }
 
   .status-strip {
     display: flex;
     gap: 8px;
     overflow-x: auto;
-    padding-bottom: 6px;
-    margin-bottom: 12px;
+    padding-bottom: 8px;
+    margin-bottom: 8px;
   }
 
   .status-strip::-webkit-scrollbar {
@@ -725,27 +723,21 @@ const styles = `
     border-radius: 999px;
   }
 
-  .status-chip {
-    background: var(--surface-alt);
+  .status-pill {
     border-radius: 999px;
-    padding: 6px 10px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    white-space: nowrap;
-    font-size: 12px;
-  }
-
-  .status-value {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .status-label {
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
     font-size: 12px;
     font-weight: 600;
-    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .status-pill.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
   }
 
   .list-spacer {
@@ -764,8 +756,9 @@ const styles = `
   .job-card {
     background: var(--surface);
     border-radius: 12px;
-    padding: 14px;
-    box-shadow: var(--shadow);
+    padding: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     position: relative;
   }
@@ -784,7 +777,7 @@ const styles = `
 
   .job-company {
     font-size: 12px;
-    color: #6c757d;
+    color: #6b7280;
     margin: 6px 0 8px;
   }
 
@@ -792,7 +785,7 @@ const styles = `
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #6c757d;
+    color: #6b7280;
     margin-bottom: 10px;
   }
 
@@ -844,6 +837,7 @@ const styles = `
   .btn-primary {
     background: var(--primary);
     color: #ffffff;
+    border-radius: 8px;
   }
 
   .btn-primary:hover {
@@ -865,16 +859,16 @@ const styles = `
     width: 28px;
     height: 28px;
     border-radius: 999px;
-    background: rgba(15, 23, 42, 0.06);
+    background: transparent;
     color: #9ca3af;
-    border: none;
+    border: 1px solid transparent;
     font-size: 16px;
     line-height: 1;
   }
 
   .btn-icon:hover {
-    background: rgba(0, 123, 255, 0.12);
-    color: var(--primary);
+    background: #f3f4f6;
+    color: #6b7280;
   }
 
   .delete-job {
