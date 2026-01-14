@@ -425,12 +425,12 @@ class TrackternJobSaver {
               <span class="brand-name">TrackFlow</span>
             </div>
             <div class="top-actions">
-              <button id="export-csv" class="btn btn-icon" aria-label="Export">📥</button>
-              <button id="settings" class="btn btn-icon" aria-label="Settings">⚙️</button>
+              <span id="export-csv" class="icon-button" aria-label="Export">⬇️</span>
+              <span id="settings" class="icon-button" aria-label="Settings">⚙️</span>
             </div>
           </header>
 
-          <button id="add-current-job" class="btn btn-primary btn-full add-job">
+          <button id="add-current-job" class="btn btn-primary add-job">
             Add New Job
           </button>
 
@@ -442,28 +442,24 @@ class TrackternJobSaver {
             `).join('')}
           </section>
 
-          <div class="list-spacer"></div>
-
           <section class="job-list">
             ${jobs.length === 0 ? `
               <div class="empty-state">
                 <p>No jobs saved yet. Start by adding your first!</p>
               </div>
             ` : jobs.map(job => `
-              <div class="job-card" data-job-id="${job.id}">
-                <button class="btn btn-icon delete-job" data-job-id="${job.id}" aria-label="Delete job">×</button>
-                <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
-                <div class="job-company">${job.fields['Company'] || 'Unknown Company'}</div>
-                <div class="job-meta">
-                  <div class="job-source">Job Board</div>
+              <div class="job-card" data-job-id="${job.id}" data-job-url="${job.fields['URL'] || ''}">
+                <div class="job-row">
+                  <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
                   <div class="job-date">${this.formatRelativeDate(job.fields['Date Added'])}</div>
                 </div>
-                <div class="job-status-row">
-                  <select class="status-select" data-job-id="${job.id}">
-                    ${statuses.map(s => `<option value="${s}" ${s === (job.fields['Status'] || 'Applied') ? 'selected' : ''}>${s}</option>`).join('')}
-                  </select>
-                  ${job.fields['URL'] ? `<a href="${job.fields['URL']}" target="_blank" class="job-link">View Job</a>` : ''}
+                <div class="job-company">
+                  ${job.fields['Company'] || 'Unknown Company'} • ${job.fields['Location'] || 'Job Board'}
                 </div>
+                <div class="job-status-row">
+                  <span class="status-badge">${job.fields['Status'] || 'Applied'}</span>
+                </div>
+                <button class="btn btn-icon delete-job" data-job-id="${job.id}" aria-label="Delete job">×</button>
               </div>
             `).join('')}
           </section>
@@ -473,22 +469,23 @@ class TrackternJobSaver {
       `;
 
       document.getElementById('add-current-job')?.addEventListener('click', () => this.loadJobAndShowForm());
-      document.getElementById('refresh-list')?.addEventListener('click', () => this.showJobList());
       document.getElementById('export-csv')?.addEventListener('click', () => this.exportToCSV(jobs));
       document.getElementById('settings')?.addEventListener('click', () => this.showSettings());
       document.querySelectorAll('.delete-job').forEach(btn =>
         btn.addEventListener('click', e => {
+          e.stopPropagation();
           const id = e.currentTarget.getAttribute('data-job-id');
           this.deleteJob(id);
         })
       );
-      document.querySelectorAll('.status-select').forEach(sel =>
-        sel.addEventListener('change', e => {
-          const id = e.currentTarget.getAttribute('data-job-id');
-          const val = e.currentTarget.value;
-          this.updateJobStatus(id, val);
-        })
-      );
+      document.querySelectorAll('.job-card').forEach(card => {
+        card.addEventListener('click', () => {
+          const url = card.getAttribute('data-job-url');
+          if (url) {
+            chrome.tabs.create({ url });
+          }
+        });
+      });
 
       this.showStatus('', 'info');
     } catch (error) {
@@ -644,7 +641,6 @@ const styles = `
     --border: #e5e7eb;
     --surface: #ffffff;
     --surface-alt: #f9fafb;
-    --shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
   }
 
   * {
@@ -653,13 +649,14 @@ const styles = `
 
   body {
     width: 380px;
-    min-height: 540px;
+    height: 600px;
     margin: 0;
-    padding: 0;
-    font-family: Inter, Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 0 0 20px;
+    font-family: 'Inter', -apple-system, sans-serif;
     background: var(--surface-alt);
     color: var(--text);
     border: 2px solid #111827;
+    overflow-y: hidden;
   }
 
   .job-form, .settings-screen {
@@ -669,13 +666,16 @@ const styles = `
   .dashboard {
     background: var(--surface-alt);
     padding: 16px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .top-bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding-bottom: 12px;
   }
 
   .brand {
@@ -691,19 +691,38 @@ const styles = `
 
   .brand-name {
     font-size: 16px;
-    font-weight: 700;
+    font-weight: 600;
     color: var(--text);
   }
 
   .top-actions {
     display: flex;
-    gap: 8px;
+    gap: 10px;
+  }
+
+  .icon-button {
+    font-size: 16px;
+    color: #9ca3af;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+  }
+
+  .icon-button:hover {
+    color: #6b7280;
   }
 
   .add-job {
-    margin-bottom: 12px;
-    border-radius: 8px;
-    box-shadow: 0 8px 16px rgba(0, 123, 255, 0.2);
+    margin: 0 16px 12px;
+    border-radius: 6px;
+    box-shadow: none;
+  }
+
+  .add-job:hover {
+    transform: scale(0.98);
   }
 
   .status-strip {
@@ -748,24 +767,32 @@ const styles = `
     display: flex;
     flex-direction: column;
     gap: 12px;
-    max-height: 320px;
     overflow-y: auto;
     padding-right: 4px;
+    flex: 1;
   }
 
   .job-card {
     background: var(--surface);
-    border-radius: 12px;
+    border-radius: 8px;
     padding: 16px;
     border: 1px solid var(--border);
-    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: none;
+    transition: transform 0.2s ease;
     position: relative;
+    cursor: pointer;
   }
 
   .job-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+  }
+
+  .job-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: flex-start;
+    padding-right: 32px;
   }
 
   .job-title {
@@ -773,6 +800,10 @@ const styles = `
     font-weight: 700;
     line-height: 1.3;
     color: var(--text);
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .job-company {
@@ -781,12 +812,9 @@ const styles = `
     margin: 6px 0 8px;
   }
 
-  .job-meta {
-    display: flex;
-    justify-content: space-between;
+  .job-date {
     font-size: 11px;
-    color: #6b7280;
-    margin-bottom: 10px;
+    color: #9ca3af;
   }
 
   .job-status-row {
@@ -796,25 +824,14 @@ const styles = `
     gap: 8px;
   }
 
-  .status-select {
-    flex: 1;
-    padding: 6px 10px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    font-size: 12px;
-    background: var(--surface);
-    color: var(--text);
-  }
-
-  .job-link {
-    font-size: 12px;
+  .status-badge {
+    background: #eff6ff;
+    color: #2563eb;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    display: inline-block;
     font-weight: 600;
-    color: var(--primary);
-    text-decoration: none;
-  }
-
-  .job-link:hover {
-    color: var(--primary-dark);
   }
 
   .btn {
@@ -835,14 +852,14 @@ const styles = `
   }
 
   .btn-primary {
-    background: var(--primary);
+    background: #2563eb;
     color: #ffffff;
-    border-radius: 8px;
+    border-radius: 6px;
+    font-weight: 500;
   }
 
   .btn-primary:hover {
-    background: var(--primary-dark);
-    transform: translateY(-1px);
+    background: #1d4ed8;
   }
 
   .btn-ghost {
@@ -856,25 +873,25 @@ const styles = `
   }
 
   .btn-icon {
-    width: 28px;
-    height: 28px;
+    width: 24px;
+    height: 24px;
     border-radius: 999px;
     background: transparent;
     color: #9ca3af;
     border: 1px solid transparent;
     font-size: 16px;
     line-height: 1;
-  }
-
-  .btn-icon:hover {
-    background: #f3f4f6;
-    color: #6b7280;
-  }
-
-  .delete-job {
     position: absolute;
     top: 10px;
     right: 10px;
+  }
+
+  .delete-job {
+    opacity: 0;
+  }
+
+  .job-card:hover .delete-job {
+    opacity: 1;
   }
 
   .delete-job:hover {
