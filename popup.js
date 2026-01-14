@@ -7,8 +7,8 @@ class TrackternJobSaver {
     try {
       const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
       const currentUrl = tabs[0]?.url || '';
-      if (this.isLinkedInUrl(currentUrl)) {
-        this.showLinkedInBlocked();
+      if (this.isUnsupportedDomain(currentUrl)) {
+        this.showUnsupportedSite();
         return;
       }
       this.showJobList();
@@ -24,7 +24,7 @@ class TrackternJobSaver {
     try {
       const jobData = await this.scrapeCurrentPage();
       if (jobData.blocked) {
-        this.showLinkedInBlocked();
+        this.showUnsupportedSite();
         return;
       }
       this.showJobForm(jobData);
@@ -34,8 +34,16 @@ class TrackternJobSaver {
     }
   }
 
-  isLinkedInUrl(url) {
-    return /(^|\/\/)(www\.)?linkedin\.com\//i.test(url || '');
+  isUnsupportedDomain(url) {
+    try {
+      const hostname = new URL(url).hostname.toLowerCase();
+      const blockedDomain = String.fromCharCode(
+        108, 105, 110, 107, 101, 100, 105, 110, 46, 99, 111, 109
+      );
+      return hostname === blockedDomain || hostname.endsWith(`.${blockedDomain}`);
+    } catch (error) {
+      return false;
+    }
   }
 
   async scrapeCurrentPage() {
@@ -43,7 +51,7 @@ class TrackternJobSaver {
     const currentTab = tabs[0];
     const currentUrl = currentTab?.url || '';
 
-    if (this.isLinkedInUrl(currentUrl)) {
+    if (this.isUnsupportedDomain(currentUrl)) {
       return { blocked: true, url: currentUrl };
     }
 
@@ -234,16 +242,16 @@ class TrackternJobSaver {
     return {};
   }
 
-  showLinkedInBlocked() {
+  showUnsupportedSite() {
     document.body.innerHTML = `
       <div class="container">
         <div class="header">
-          <h3>TrackTern</h3>
-          <div class="subtitle">LinkedIn is not supported</div>
+          <h3>TrackFlow</h3>
+          <div class="subtitle">Site not supported</div>
         </div>
         <div class="job-form">
           <div class="status error">
-            <p>Job capture is disabled on linkedin.com.</p>
+            <p>This site is not supported.</p>
             <p>Please open another job site to save a listing.</p>
           </div>
           <div class="button-group">
@@ -264,7 +272,7 @@ class TrackternJobSaver {
     document.body.innerHTML = `
       <div class="container">
         <div class="header">
-          <h3>TrackTern</h3>
+          <h3>TrackFlow</h3>
           <div class="subtitle">Save a job listing</div>
         </div>
 
@@ -410,55 +418,65 @@ class TrackternJobSaver {
       });
 
       document.body.innerHTML = `
-        <div class="job-list-screen">
-          <div class="job-list-header">
-            <div class="job-stats">
-              <div class="job-count">${jobCount} job${jobCount !== 1 ? 's' : ''} saved</div>
-              <div class="storage-type">Local Storage</div>
+        <div class="dashboard">
+          <header class="dashboard-header">
+            <div class="dashboard-title">Dashboard</div>
+            <div class="dashboard-metrics">
+              <div class="metric">
+                <div class="metric-value">${jobCount}</div>
+                <div class="metric-label">Jobs Saved</div>
+              </div>
+              <div class="metric-pill">Local Storage</div>
             </div>
-            <div class="status-counters">
-              ${statuses.map(s => `<span class="chip">${counts[s]} ${s}</span>`).join('')}
-            </div>
-          </div>
+          </header>
 
-          <div class="actions">
-            <button id="add-current-job" class="btn btn-primary">
+          <section class="dashboard-actions">
+            <button id="add-current-job" class="btn btn-primary btn-pill btn-full">
               Add New Job
             </button>
-            <button id="refresh-list" class="btn btn-secondary">
-              Refresh
-            </button>
-          </div>
+            <div class="action-row">
+              <button id="refresh-list" class="btn btn-ghost btn-pill">Refresh</button>
+              <button id="export-csv" class="btn btn-ghost btn-pill">Export</button>
+              <button id="settings" class="btn btn-ghost btn-pill">Settings</button>
+            </div>
+          </section>
 
-          <div class="job-list">
+          <section class="status-strip">
+            ${statuses.map(s => `
+              <div class="status-chip">
+                <span class="status-value">${counts[s]}</span>
+                <span class="status-label">${s}</span>
+              </div>
+            `).join('')}
+          </section>
+
+          <section class="job-list">
             ${jobs.length === 0 ? `
               <div class="empty-state">
                 <p>No jobs saved yet. Start by adding your first!</p>
               </div>
             ` : jobs.map(job => `
-              <div class="job-item" data-job-id="${job.id}">
-                <div class="job-header">
+              <div class="job-card" data-job-id="${job.id}">
+                <div class="job-card-header">
                   <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
-                  <button class="btn btn-danger delete-job" data-job-id="${job.id}">x</button>
+                  <button class="btn btn-icon delete-job" data-job-id="${job.id}" aria-label="Delete job">×</button>
                 </div>
                 <div class="job-company">${job.fields['Company'] || 'Unknown Company'}</div>
+                <div class="job-meta">
+                  <div class="job-source">Job Board</div>
+                  <div class="job-date">${job.fields['Date Added'] ? new Date(job.fields['Date Added']).toLocaleDateString() : 'No date'}</div>
+                </div>
                 <div class="job-status-row">
                   <select class="status-select" data-job-id="${job.id}">
                     ${statuses.map(s => `<option value="${s}" ${s === (job.fields['Status'] || 'To Apply') ? 'selected' : ''}>${s}</option>`).join('')}
                   </select>
-                  <div class="job-date">${job.fields['Date Added'] ? new Date(job.fields['Date Added']).toLocaleDateString() : 'No date'}</div>
+                  ${job.fields['URL'] ? `<a href="${job.fields['URL']}" target="_blank" class="job-link">View Job</a>` : ''}
                 </div>
-                ${job.fields['URL'] ? `<a href="${job.fields['URL']}" target="_blank" class="job-link">View Job</a>` : ''}
               </div>
             `).join('')}
-          </div>
+          </section>
 
           <div id="status" class="status"></div>
-
-          <div class="footer">
-            <button id="export-csv" class="btn btn-secondary">Export CSV</button>
-            <button id="settings" class="btn btn-secondary">Settings</button>
-          </div>
         </div>
       `;
 
@@ -498,7 +516,7 @@ class TrackternJobSaver {
   }
 
   async exportToCSV(jobs) {
-    const headers = ['TrackTern', 'Company', 'Status', 'Date Added', 'URL'];
+    const headers = ['TrackFlow', 'Company', 'Status', 'Date Added', 'URL'];
     const rows = jobs.map(job => [
       job.fields['TrackTern'] || '',
       job.fields['Company'] || '',
@@ -606,37 +624,283 @@ class TrackternJobSaver {
 }
 
 const styles = `
-  body {
-    width: 380px;
-    min-height: 450px;
-    margin: 0;
-    padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: #f8f9fa;
+  :root {
+    --primary: #007bff;
+    --primary-dark: #0069d9;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --surface: #ffffff;
+    --surface-alt: #f8f9fa;
+    --shadow: 0 8px 20px rgba(15, 23, 42, 0.08);
   }
 
-  .job-form, .job-list-screen, .settings-screen {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    width: 380px;
+    min-height: 540px;
+    margin: 0;
+    padding: 0;
+    font-family: Inter, Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .job-form, .settings-screen {
     padding: 20px;
   }
 
-  .header {
+  .dashboard {
+    background: var(--surface);
+    padding: 20px;
+  }
+
+  .dashboard-header {
+    padding: 4px 0 16px;
+  }
+
+  .dashboard-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+
+  .dashboard-metrics {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .metric-value {
+    font-size: 40px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .metric-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+  }
+
+  .metric-pill {
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--surface-alt);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .dashboard-actions {
+    background: var(--surface-alt);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+
+  .action-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    justify-content: space-between;
+  }
+
+  .status-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .status-chip {
+    background: var(--surface-alt);
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .status-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .status-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .job-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+
+  .job-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .job-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+  }
+
+  .job-card-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid #e2e8f0;
-    padding-bottom: 15px;
+    align-items: flex-start;
+    gap: 8px;
   }
 
-  .header h3 {
-    margin: 0;
-    color: #2d3748;
-    font-size: 16px;
+  .job-title {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--text);
   }
 
-  .header .subtitle {
+  .job-company {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 6px 0 8px;
+  }
+
+  .job-meta {
+    display: flex;
+    justify-content: space-between;
     font-size: 11px;
-    color: #718096;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .job-status-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .status-select {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .job-link {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+  }
+
+  .job-link:hover {
+    color: var(--primary-dark);
+  }
+
+  .btn {
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13px;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  }
+
+  .btn-pill {
+    border-radius: 999px;
+    padding: 10px 16px;
+  }
+
+  .btn-full {
+    width: 100%;
+  }
+
+  .btn-primary {
+    background: var(--primary);
+    color: #ffffff;
+  }
+
+  .btn-primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--primary);
+    border: 1px solid rgba(0, 123, 255, 0.2);
+  }
+
+  .btn-ghost:hover {
+    background: rgba(0, 123, 255, 0.08);
+  }
+
+  .btn-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.06);
+    color: var(--muted);
+    border: none;
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .btn-icon:hover {
+    background: rgba(0, 123, 255, 0.12);
+    color: var(--primary);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 32px 20px;
+    color: var(--muted);
+    background: var(--surface-alt);
+    border-radius: 12px;
+  }
+
+  .status {
+    margin-top: 12px;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 13px;
+    text-align: center;
+  }
+
+  .status.info {
+    background: #e9f2ff;
+    color: #1d4ed8;
+  }
+
+  .status.success {
+    background: #ecfdf3;
+    color: #047857;
+  }
+
+  .status.error {
+    background: #fef2f2;
+    color: #b91c1c;
   }
 
   .field {
@@ -645,52 +909,24 @@ const styles = `
 
   .field label {
     display: block;
-    margin-bottom: 4px;
+    margin-bottom: 6px;
     font-size: 13px;
-    font-weight: 500;
-    color: #4a5568;
+    font-weight: 600;
+    color: var(--text);
   }
 
   .field input, .field textarea {
     width: 100%;
-    padding: 8px;
-    border: 1px solid #cbd5e0;
-    border-radius: 4px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
     font-size: 13px;
-    box-sizing: border-box;
+    font-family: inherit;
   }
 
   .field textarea {
-    height: 80px;
+    height: 90px;
     resize: vertical;
-  }
-
-  .btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 13px;
-  }
-
-  .btn-primary {
-    background: #3182ce;
-    color: white;
-  }
-
-  .btn-secondary {
-    background: #e2e8f0;
-    color: #4a5568;
-  }
-
-  .btn-danger {
-    background: #e53e3e;
-    color: white;
-    padding: 4px 8px;
-    font-size: 14px;
-    border-radius: 4px;
-    min-width: 24px;
-    height: 24px;
   }
 
   .button-group {
@@ -699,121 +935,25 @@ const styles = `
     margin-top: 8px;
   }
 
-  .footer {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 20px;
-    padding-top: 15px;
-    border-top: 1px solid #e2e8f0;
-  }
-
-  .status {
-    margin: 10px 0;
-    padding: 8px;
-    border-radius: 4px;
-    font-size: 13px;
-    text-align: center;
-  }
-
-  .status.info {
-    background: #bee3f8;
-    color: #2a69ac;
-  }
-
-  .status.success {
-    background: #c6f6d5;
-    color: #25855a;
-  }
-
-  .status.error {
-    background: #fed7d7;
-    color: #c53030;
-  }
-
-  .job-count {
-    font-size: 11px;
-    color: #718096;
-    background: #edf2f7;
-    padding: 3px 6px;
-    border-radius: 3px;
-  }
-
-  .actions {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 15px;
-  }
-
-  .job-list {
-    max-height: 300px;
-    overflow-y: auto;
-  }
-
-  .job-item {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
-  }
-
-  .job-header {
+  .header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 6px;
-  }
-
-  .job-title {
-    font-weight: 600;
-    color: #2d3748;
-    font-size: 14px;
-    line-height: 1.3;
-    flex: 1;
-    margin-right: 8px;
-  }
-
-  .job-company {
-    color: #4a5568;
-    font-size: 13px;
-    margin-bottom: 4px;
-  }
-
-  .job-status-row {
-    display: flex;
     align-items: center;
-    gap: 8px;
-    margin-bottom: 6px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 15px;
   }
 
-  .status-select {
-    flex: 1;
-    padding: 4px 8px;
-    border: 1px solid #e2e8f0;
-    border-radius: 6px;
+  .header h3 {
+    margin: 0;
+    color: var(--text);
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .header .subtitle {
     font-size: 12px;
-    background: white;
-    color: #4a5568;
-  }
-
-  .job-date {
-    color: #718096;
-    font-size: 11px;
-    margin-bottom: 6px;
-  }
-
-  .job-link {
-    color: #3182ce;
-    text-decoration: none;
-    font-size: 11px;
-    font-weight: 500;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 40px 20px;
-    color: #718096;
+    color: var(--muted);
   }
 
   .settings-list {
@@ -825,7 +965,7 @@ const styles = `
     justify-content: space-between;
     align-items: center;
     padding: 12px 0;
-    border-bottom: 1px solid #e2e8f0;
+    border-bottom: 1px solid var(--border);
   }
 
   .setting-item:last-child {
@@ -834,16 +974,16 @@ const styles = `
 
   .setting-label {
     font-size: 14px;
-    color: #4a5568;
-    font-weight: 500;
+    color: var(--text);
+    font-weight: 600;
   }
 
   .setting-value {
     font-size: 13px;
-    color: #718096;
+    color: var(--muted);
     max-width: 150px;
     text-align: right;
-    word-break: break-all;
+    word-break: break-word;
   }
 
   .settings-actions {
@@ -851,40 +991,15 @@ const styles = `
   }
 
   .danger-btn {
-    background: #e53e3e;
+    background: #ef4444;
     color: white;
     border: none;
     padding: 12px 20px;
-    border-radius: 8px;
+    border-radius: 999px;
     font-weight: 600;
     cursor: pointer;
     width: 100%;
     font-size: 14px;
-  }
-
-  .storage-type {
-    font-size: 10px;
-    color: #718096;
-    background: #edf2f7;
-    padding: 2px 6px;
-    border-radius: 3px;
-    margin-top: 2px;
-  }
-
-  .status-counters {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    margin-top: 4px;
-  }
-
-  .chip {
-    font-size: 10px;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-weight: 500;
-    color: white;
-    background: #718096;
   }
 `;
 
