@@ -1,20 +1,13 @@
 {
   "manifest_version": 3,
   "name": "TrackTern",
-  "version": "2.0.1",
-  "description": "Save job listings locally with seamless setup and smart extraction.",
+  "version": "2.1.0",
+  "description": "Save job listings locally with smart extraction (not supported on LinkedIn).",
   "permissions": ["activeTab", "scripting", "storage", "tabs"],
-  "host_permissions": ["https://api.airtable.com/*", "https://airtable.com/*"],
   "action": {
     "default_popup": "popup.html",
     "default_title": "TrackTern"
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"]
-    }
-  ],
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
