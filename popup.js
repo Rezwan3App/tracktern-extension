@@ -91,16 +91,38 @@ class TrackternJobSaver {
           const text = document.body?.innerText || '';
           if (!text) return '';
           const patterns = [
-            /\$\s?\d{2,3}\s?k\s*(?:-\s*\$\s?\d{2,3}\s?k)?/i,
-            /\$\s?\d{1,3}(?:,\d{3})+\s*(?:-\s*\$\s?\d{1,3}(?:,\d{3})+)?/i,
-            /\$\s?\d+(?:\.\d+)?\s*\/\s*hr/i,
-            /\$\s?\d+(?:\.\d+)?\s*\/\s*hour/i
+            /\$\s?\d{2,3}\s?k\s*(?:-\s*\$\s?\d{2,3}\s?k)?(?:\s*(?:\/|per)\s*(?:year|yr|annual|annually))?/i,
+            /\$\s?\d{1,3}(?:,\d{3})+\s*(?:-\s*\$\s?\d{1,3}(?:,\d{3})+)?(?:\s*(?:\/|per)\s*(?:year|yr|annual|annually))?/i,
+            /\$\s?\d+(?:\.\d+)?\s*(?:\/|per)\s*(?:hour|hr)/i,
+            /\$\s?\d+(?:\.\d+)?\s*(?:\/|per)\s*(?:week|wk)/i,
+            /\$\s?\d+(?:\.\d+)?\s*(?:\/|per)\s*(?:month|mo)/i
           ];
+
+          const unitMap = [
+            { re: /\b(per|\/)\s*(year|yr|annual|annually)\b/i, suffix: '/yr' },
+            { re: /\b(per|\/)\s*(hour|hr)\b/i, suffix: '/hr' },
+            { re: /\b(per|\/)\s*(week|wk)\b/i, suffix: '/wk' },
+            { re: /\b(per|\/)\s*(month|mo)\b/i, suffix: '/mo' }
+          ];
+
           for (const pattern of patterns) {
-            const match = text.match(pattern);
-            if (match) {
-              return match[0].replace(/\s+/g, ' ').trim();
+            const match = pattern.exec(text);
+            if (!match) continue;
+            let salaryText = match[0].replace(/\s+/g, ' ').trim();
+            if (/(\/|per)\s*(year|yr|annual|annually|hour|hr|week|wk|month|mo)/i.test(salaryText)) {
+              return salaryText;
             }
+
+            const windowStart = Math.max(0, match.index - 40);
+            const windowEnd = Math.min(text.length, match.index + salaryText.length + 40);
+            const context = text.slice(windowStart, windowEnd);
+            for (const unit of unitMap) {
+              if (unit.re.test(context)) {
+                return `${salaryText} ${unit.suffix}`;
+              }
+            }
+
+            return salaryText;
           }
           return '';
         };
