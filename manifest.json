@@ -3,10 +3,13 @@
   "name": "TrackFlow",
   "version": "2.1.0",
   "description": "Save job listings locally with smart extraction.",
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "permissions": ["activeTab", "scripting", "storage", "tabs", "contextMenus"],
   "action": {
     "default_popup": "popup.html",
     "default_title": "TrackFlow"
+  },
+  "background": {
+    "service_worker": "background.js"
   },
   "icons": {
     "16": "icons/icon16.png",
