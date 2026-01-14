@@ -127,9 +127,32 @@ class TrackternJobSaver {
           return '';
         };
 
+        const blockedPhrases = [
+          "kathryn's story",
+          "our story",
+          "company story",
+          "employee story",
+          "people story",
+          "success story",
+          "view all jobs",
+          "see all jobs",
+          "benefits",
+          "culture",
+          "life at",
+          "about us",
+          "who we are"
+        ];
+
+        const isBlockedText = (text) => {
+          if (!text) return false;
+          const normalized = text.trim().toLowerCase();
+          return blockedPhrases.some(phrase => normalized.includes(phrase));
+        };
+
         const isLikelyCompanyText = (text, el) => {
           if (!text) return false;
           const normalized = text.trim();
+          if (isBlockedText(normalized)) return false;
           if (normalized.length < 2 || normalized.length > 200) return false;
           if (el?.closest('footer, nav, header')) return false;
           if (el?.closest('[class*="share"], [class*="social"], [aria-label*="share"], [aria-label*="follow"]')) {
@@ -173,6 +196,7 @@ class TrackternJobSaver {
             for (const el of elements) {
               const text = el.innerText?.trim();
               if (!text) continue;
+              if (isBlockedText(text)) continue;
               if (fieldName === 'company') {
                 if (isLikelyCompanyText(text, el)) {
                   return text;
@@ -261,7 +285,8 @@ class TrackternJobSaver {
               trimmed.includes('reposted') ||
               /^[a-z\s,]+,\s+[a-z]{2}$/i.test(trimmed) ||
               trimmed.match(/^\d+\s+(day|week|month)s?\s+ago/) ||
-              trimmed.length < 20
+              trimmed.length < 20 ||
+              isBlockedText(trimmed)
             );
           });
 
@@ -515,26 +540,15 @@ class TrackternJobSaver {
         if (counts[st] !== undefined) counts[st]++;
       });
       const currentFilter = this.currentStatusFilter || 'All';
-      const currentTypeFilter = this.currentTypeFilter || 'All';
-      const currentCompanyFilter = this.currentCompanyFilter || 'All';
+      const currentTypeFilter = this.currentTypeFilter || null;
       const filteredJobs = jobs.filter(job => {
         const statusMatch = currentFilter === 'All'
           ? true
           : (job.fields['Status'] || 'Applied') === currentFilter;
         const type = this.classifyJobType(job);
-        const typeMatch = currentTypeFilter === 'All' ? true : type === currentTypeFilter;
-        const companyMatch = currentCompanyFilter === 'All'
-          ? true
-          : (job.fields['Company'] || '').toLowerCase() === currentCompanyFilter.toLowerCase();
-        return statusMatch && typeMatch && companyMatch;
+        const typeMatch = currentTypeFilter ? type === currentTypeFilter : true;
+        return statusMatch && typeMatch;
       });
-      const companyOptions = Array.from(
-        new Set(
-          jobs
-            .map(job => (job.fields['Company'] || '').trim())
-            .filter(Boolean)
-        )
-      ).sort((a, b) => a.localeCompare(b));
 
       document.body.innerHTML = `
         <div class="dashboard">
@@ -555,27 +569,18 @@ class TrackternJobSaver {
 
           <section class="status-strip">
             ${['All', ...statuses].map((s, idx) => `
-              <button class="status-pill ${s === currentFilter ? 'active' : ''}" type="button" data-status="${s}">
+              <button class="status-pill ${s === currentFilter ? 'active' : ''} status-pill-${s.toLowerCase()}" type="button" data-status="${s}">
                 ${s}${s === 'All' ? `: ${jobCount}` : `: ${counts[s]}`}
               </button>
             `).join('')}
           </section>
 
           <section class="type-strip">
-            ${['All', 'Internship', 'Fulltime'].map(type => `
+            ${['Internship', 'Fulltime'].map(type => `
               <button class="status-pill ${type === currentTypeFilter ? 'active' : ''}" type="button" data-type="${type}">
                 ${type}
               </button>
             `).join('')}
-            <label class="company-filter">
-              <span>Company</span>
-              <select id="company-filter">
-                <option value="All">All</option>
-                ${companyOptions.map(company => `
-                  <option value="${this.escapeHtml(company)}" ${company === currentCompanyFilter ? 'selected' : ''}>${this.escapeHtml(company)}</option>
-                `).join('')}
-              </select>
-            </label>
           </section>
 
           <section class="job-list">
@@ -619,16 +624,15 @@ class TrackternJobSaver {
           const type = e.currentTarget.getAttribute('data-type');
           if (status) {
             this.currentStatusFilter = status;
+            if (status === 'All') {
+              this.currentTypeFilter = null;
+            }
           }
           if (type) {
             this.currentTypeFilter = type;
           }
           this.showJobList();
         });
-      });
-      document.getElementById('company-filter')?.addEventListener('change', e => {
-        this.currentCompanyFilter = e.currentTarget.value;
-        this.showJobList();
       });
       document.querySelectorAll('.delete-job').forEach(btn =>
         btn.addEventListener('click', e => {
@@ -922,6 +926,19 @@ const styles = `
     border-radius: 999px;
   }
 
+  .status-strip {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .status-strip::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+
+  .status-strip:hover::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+  }
+
   .status-pill {
     border-radius: 999px;
     padding: 6px 12px;
@@ -939,6 +956,23 @@ const styles = `
     color: #ffffff;
   }
 
+  .status-pill-applied {
+    background: #ecfdf3;
+    border-color: #86efac;
+    color: #166534;
+  }
+
+  .status-pill-rejected {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #b91c1c;
+  }
+
+  .status-pill-applied.active,
+  .status-pill-rejected.active {
+    box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.08) inset;
+  }
+
   .type-strip {
     display: flex;
     gap: 8px;
@@ -946,25 +980,23 @@ const styles = `
     padding-bottom: 8px;
     margin-bottom: 6px;
     align-items: center;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
   }
 
-  .company-filter {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--muted);
-    white-space: nowrap;
+  .type-strip::-webkit-scrollbar {
+    height: 6px;
   }
 
-  .company-filter select {
-    padding: 6px 10px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: #ffffff;
-    font-size: 12px;
-    color: var(--text);
+  .type-strip::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
   }
+
+  .type-strip:hover::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+  }
+
 
   .list-spacer {
     height: 8px;
@@ -977,6 +1009,21 @@ const styles = `
     overflow-y: auto;
     padding-right: 4px;
     max-height: 360px;
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  .job-list::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .job-list::-webkit-scrollbar-thumb {
+    background: transparent;
+    border-radius: 999px;
+  }
+
+  .job-list:hover::-webkit-scrollbar-thumb {
+    background: #d1d5db;
   }
 
   .job-card {
