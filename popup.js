@@ -420,35 +420,35 @@ class TrackternJobSaver {
       document.body.innerHTML = `
         <div class="dashboard">
           <header class="dashboard-header">
-            <div class="dashboard-title">Dashboard</div>
-            <div class="dashboard-metrics">
-              <div class="metric">
-                <div class="metric-value">${jobCount}</div>
-                <div class="metric-label">Jobs Saved</div>
-              </div>
-              <div class="metric-pill">Local Storage</div>
+            <div class="dashboard-title">TrackFlow 2.0 Dashboard</div>
+            <div class="dashboard-actions-top">
+              <button id="export-csv" class="btn btn-icon" aria-label="Export">📥</button>
+              <button id="settings" class="btn btn-icon" aria-label="Settings">⚙️</button>
             </div>
           </header>
 
-          <section class="dashboard-actions">
+          <div class="dashboard-subtitle">your personal job vault</div>
+
+          <section class="dashboard-hero">
+            <div class="metric">
+              <div class="metric-value">${jobCount}</div>
+              <div class="metric-label">Jobs Saved</div>
+            </div>
             <button id="add-current-job" class="btn btn-primary btn-pill btn-full">
               Add New Job
             </button>
-            <div class="action-row">
-              <button id="refresh-list" class="btn btn-ghost btn-pill">Refresh</button>
-              <button id="export-csv" class="btn btn-ghost btn-pill">Export</button>
-              <button id="settings" class="btn btn-ghost btn-pill">Settings</button>
-            </div>
           </section>
 
           <section class="status-strip">
             ${statuses.map(s => `
               <div class="status-chip">
-                <span class="status-value">${counts[s]}</span>
                 <span class="status-label">${s}</span>
+                <span class="status-value">${counts[s]}</span>
               </div>
             `).join('')}
           </section>
+
+          <div class="list-spacer"></div>
 
           <section class="job-list">
             ${jobs.length === 0 ? `
@@ -457,10 +457,8 @@ class TrackternJobSaver {
               </div>
             ` : jobs.map(job => `
               <div class="job-card" data-job-id="${job.id}">
-                <div class="job-card-header">
-                  <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
-                  <button class="btn btn-icon delete-job" data-job-id="${job.id}" aria-label="Delete job">×</button>
-                </div>
+                <button class="btn btn-icon delete-job" data-job-id="${job.id}" aria-label="Delete job">×</button>
+                <div class="job-title">${job.fields['TrackTern'] || 'Untitled'}</div>
                 <div class="job-company">${job.fields['Company'] || 'Unknown Company'}</div>
                 <div class="job-meta">
                   <div class="job-source">Job Board</div>
@@ -647,6 +645,7 @@ const styles = `
     font-family: Inter, Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--surface);
     color: var(--text);
+    border: 2px solid #111827;
   }
 
   .job-form, .settings-screen {
@@ -659,23 +658,41 @@ const styles = `
   }
 
   .dashboard-header {
-    padding: 4px 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0 8px;
   }
 
   .dashboard-title {
     font-size: 18px;
     font-weight: 700;
-    margin-bottom: 10px;
   }
 
-  .dashboard-metrics {
+  .dashboard-actions-top {
     display: flex;
+    gap: 8px;
+  }
+
+  .dashboard-subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 16px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+
+  .dashboard-hero {
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 16px;
   }
 
   .metric-value {
-    font-size: 40px;
+    font-size: 42px;
     font-weight: 800;
     line-height: 1;
     color: var(--text);
@@ -688,49 +705,39 @@ const styles = `
     text-transform: uppercase;
     letter-spacing: 0.08em;
     margin-top: 4px;
-  }
-
-  .metric-pill {
-    padding: 6px 12px;
-    border-radius: 999px;
-    background: var(--surface-alt);
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .dashboard-actions {
-    background: var(--surface-alt);
-    border-radius: 16px;
-    padding: 16px;
-    margin-bottom: 16px;
-  }
-
-  .action-row {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    justify-content: space-between;
+    text-align: center;
   }
 
   .status-strip {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    margin-bottom: 16px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    margin-bottom: 12px;
+  }
+
+  .status-strip::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .status-strip::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 999px;
   }
 
   .status-chip {
     background: var(--surface-alt);
-    border-radius: 12px;
-    padding: 10px;
-    display: flex;
+    border-radius: 999px;
+    padding: 6px 10px;
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 6px;
+    white-space: nowrap;
+    font-size: 12px;
   }
 
   .status-value {
-    font-size: 18px;
+    font-size: 12px;
     font-weight: 700;
     color: var(--text);
   }
@@ -739,6 +746,10 @@ const styles = `
     font-size: 12px;
     font-weight: 600;
     color: var(--muted);
+  }
+
+  .list-spacer {
+    height: 8px;
   }
 
   .job-list {
@@ -756,6 +767,7 @@ const styles = `
     padding: 14px;
     box-shadow: var(--shadow);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
   }
 
   .job-card:hover {
@@ -763,23 +775,16 @@ const styles = `
     box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
   }
 
-  .job-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
   .job-title {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 700;
     line-height: 1.3;
     color: var(--text);
   }
 
   .job-company {
-    font-size: 13px;
-    color: var(--muted);
+    font-size: 12px;
+    color: #6c757d;
     margin: 6px 0 8px;
   }
 
@@ -787,7 +792,7 @@ const styles = `
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: var(--muted);
+    color: #6c757d;
     margin-bottom: 10px;
   }
 
@@ -861,7 +866,7 @@ const styles = `
     height: 28px;
     border-radius: 999px;
     background: rgba(15, 23, 42, 0.06);
-    color: var(--muted);
+    color: #9ca3af;
     border: none;
     font-size: 16px;
     line-height: 1;
@@ -870,6 +875,17 @@ const styles = `
   .btn-icon:hover {
     background: rgba(0, 123, 255, 0.12);
     color: var(--primary);
+  }
+
+  .delete-job {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+
+  .delete-job:hover {
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.12);
   }
 
   .empty-state {
