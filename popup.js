@@ -601,7 +601,9 @@ class TrackternJobSaver {
                   ${job.fields['Company'] || 'Unknown Company'} • ${type}
                 </div>
                 <div class="job-status-row">
-                  <span class="status-badge">${job.fields['Status'] || 'Applied'}</span>
+                  <select class="status-select" data-job-id="${job.id}">
+                    ${statuses.map(s => `<option value="${s}" ${s === (job.fields['Status'] || 'Applied') ? 'selected' : ''}>${s}</option>`).join('')}
+                  </select>
                   ${job.fields['Salary'] ? `<span class="salary-badge">💵 ${job.fields['Salary']}</span>` : ''}
                 </div>
                 <button class="btn btn-icon delete-job" data-job-id="${job.id}" aria-label="Delete job">×</button>
@@ -632,6 +634,15 @@ class TrackternJobSaver {
             this.currentTypeFilter = type;
           }
           this.showJobList();
+        });
+      });
+      document.querySelectorAll('.status-select').forEach(select => {
+        select.addEventListener('click', e => e.stopPropagation());
+        select.addEventListener('change', e => {
+          e.stopPropagation();
+          const id = e.currentTarget.getAttribute('data-job-id');
+          const val = e.currentTarget.value;
+          this.updateJobStatus(id, val);
         });
       });
       document.querySelectorAll('.delete-job').forEach(btn =>
@@ -1076,6 +1087,16 @@ const styles = `
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+  }
+
+  .status-select {
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #ffffff;
+    font-size: 12px;
+    color: var(--text);
+    font-family: inherit;
   }
 
   .status-badge {
